@@ -1,24 +1,53 @@
 const express = require("express");
-const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
 
 const app = express();
-app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.static("public"));
 
 // Config
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || "";
 const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
+const MAX_FILE_BYTES = 2 * 1024 * 1024;
+const MAX_TREE_ENTRIES = 10000;
+const IGNORED_DIRECTORIES = new Set([
+  ".git",
+  "node_modules",
+  "vendor",
+  "dist",
+  "build",
+  ".next",
+  ".cache",
+]);
 
 // Safety: resolve and validate path stays within root
 function safePath(rootDir, relativePath) {
+  if (typeof rootDir !== "string" || !path.isAbsolute(rootDir)) {
+    throw new Error("Project root must be an absolute path");
+  }
+  if (typeof relativePath !== "string" || path.isAbsolute(relativePath)) {
+    throw new Error("File path must be relative to the project root");
+  }
   const root = path.resolve(rootDir);
   const target = path.resolve(rootDir, relativePath);
-  if (!target.startsWith(root)) throw new Error("Path traversal denied");
+  const relative = path.relative(root, target);
+  if (relative === ".." || relative.startsWith(`..${path.sep}`)) {
+    throw new Error("Path traversal denied");
+  }
   return target;
+}
+
+function validateRoot(rootDir) {
+  if (typeof rootDir !== "string" || !path.isAbsolute(rootDir)) {
+    throw new Error("Project root must be an absolute path");
+  }
+  const root = path.resolve(rootDir);
+  if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) {
+    throw new Error("Project root does not exist or is not a directory");
+  }
+  return root;
 }
 
 // ── File Routes ──────────────────────────────────────────────
@@ -27,6 +56,7 @@ function safePath(rootDir, relativePath) {
 app.post("/api/files/list", (req, res) => {
   const { rootDir } = req.body;
   if (!rootDir) return res.status(400).json({ error: "rootDir required" });
+  let entryCount = 0;
 
   function walk(dir, base = "") {
     let results = [];
@@ -37,8 +67,16 @@ app.post("/api/files/list", (req, res) => {
       return results;
     }
 
+    entries.sort((a, b) => {
+      if (a.isDirectory() !== b.isDirectory()) return a.isDirectory() ? -1 : 1;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    });
+
     for (const e of entries) {
-      if (e.name.startsWith(".")) continue;
+      if (entryCount >= MAX_TREE_ENTRIES) break;
+      if (e.name.startsWith(".") || IGNORED_DIRECTORIES.has(e.name)) continue;
+      if (e.isSymbolicLink()) continue;
+      entryCount += 1;
       const rel = base ? `${base}/${e.name}` : e.name;
       if (e.isDirectory()) {
         results.push({
@@ -55,10 +93,11 @@ app.post("/api/files/list", (req, res) => {
   }
 
   try {
-    const tree = walk(rootDir);
-    res.json({ tree });
+    const root = validateRoot(rootDir);
+    const tree = walk(root);
+    res.json({ tree, truncated: entryCount >= MAX_TREE_ENTRIES });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(400).json({ error: e.message });
   }
 });
 
@@ -67,10 +106,15 @@ app.post("/api/files/read", (req, res) => {
   const { rootDir, filePath } = req.body;
   try {
     const abs = safePath(rootDir, filePath);
+    const stat = fs.statSync(abs);
+    if (!stat.isFile()) throw new Error("Path is not a file");
+    if (stat.size > MAX_FILE_BYTES) {
+      return res.status(413).json({ error: "File is larger than 2 MB" });
+    }
     const content = fs.readFileSync(abs, "utf8");
     res.json({ content });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(400).json({ error: e.message });
   }
 });
 
@@ -85,11 +129,31 @@ app.post("/api/files/write", (req, res) => {
   }
   try {
     const abs = safePath(rootDir, filePath);
+    if (Buffer.byteLength(String(content), "utf8") > MAX_FILE_BYTES) {
+      return res.status(413).json({ error: "File is larger than 2 MB" });
+    }
+    const created = !fs.existsSync(abs);
     fs.mkdirSync(path.dirname(abs), { recursive: true });
     fs.writeFileSync(abs, String(content), "utf8");
-    res.json({ success: true });
+    res.json({ success: true, created });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// Delete is used by the local undo stack when an AI-created file is reverted.
+app.post("/api/files/delete", (req, res) => {
+  const { rootDir, filePath } = req.body;
+  try {
+    const abs = safePath(rootDir, filePath);
+    if (!fs.existsSync(abs)) return res.json({ success: true });
+    if (!fs.statSync(abs).isFile()) {
+      return res.status(400).json({ error: "Only files can be deleted" });
+    }
+    fs.unlinkSync(abs);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
   }
 });
 
@@ -104,6 +168,9 @@ app.post("/api/files/create", (req, res) => {
   }
   try {
     const abs = safePath(rootDir, filePath);
+    if (Buffer.byteLength(String(content), "utf8") > MAX_FILE_BYTES) {
+      return res.status(413).json({ error: "File is larger than 2 MB" });
+    }
     // If file exists, overwrite instead of erroring
     fs.mkdirSync(path.dirname(abs), { recursive: true });
     fs.writeFileSync(abs, String(content), "utf8");
@@ -189,7 +256,15 @@ Project root: ${rootDir || "(not set)"}`;
   }
 });
 
+app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log(`AI Copilot server running at http://localhost:${PORT}`),
-);
+const HOST = process.env.HOST || "127.0.0.1";
+
+if (require.main === module) {
+  app.listen(PORT, HOST, () =>
+    console.log(`AI Copilot server running at http://${HOST}:${PORT}`),
+  );
+}
+
+module.exports = { app, safePath, validateRoot };

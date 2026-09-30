@@ -966,11 +966,6 @@
         opacity: 1;
       }
     </style>
-    <!-- CodeMirror 5 Stylesheets -->
-    <link rel="stylesheet" href="https://cloudflare.com" />
-    <!-- Theme matching your dark GitHub UI -->
-    <link rel="stylesheet" href="https://cloudflare.com" />
-
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css"
@@ -979,7 +974,6 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css"
     />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.js"></script>
@@ -1184,8 +1178,7 @@
       // ── State ─────────────────────────────────────────────────────
       const state = {
         apiKey: localStorage.getItem("dsApiKey") || "",
-        backendUrl:
-          localStorage.getItem("backendUrl") || "http://localhost:3000",
+        backendUrl: localStorage.getItem("backendUrl") || window.location.origin,
         rootDir: localStorage.getItem("rootDir") || "",
         openTabs: [],
         activeTab: null,
@@ -1313,9 +1306,15 @@
         try {
           const res = await api("/api/files/list", { rootDir });
           renderTree(res.tree, document.getElementById("fileTree"));
+          if (res.truncated) {
+            const note = document.createElement("div");
+            note.className = "tree-notice";
+            note.textContent = "Explorer limited to 10,000 items";
+            document.getElementById("fileTree").appendChild(note);
+          }
         } catch (e) {
           document.getElementById("fileTree").innerHTML =
-            `<div style="padding:8px;color:var(--red);font-size:12px">Error: ${e.message}</div>`;
+            `<div style="padding:8px;color:var(--red);font-size:12px">Error: ${escHtml(e.message)}</div>`;
         }
       }
 
@@ -1327,8 +1326,7 @@
             const item = document.createElement("div");
             item.className = "tree-item dir";
             item.style.paddingLeft = 8 + depth * 8 + "px";
-            const icon = getFileIcon(node.name);
-            item.innerHTML = `<i class="ti ti-chevron-right" style="font-size:12px;color:var(--text3)"></i><i class="ti ti-folder" style="color:var(--yellow)"></i><span class="tree-item-name">${node.name}</span>`;
+            item.innerHTML = `<i class="ti ti-chevron-right" style="font-size:12px;color:var(--text3)"></i><i class="ti ti-folder" style="color:var(--yellow)"></i><span class="tree-item-name">${escHtml(node.name)}</span>`;
             const children = document.createElement("div");
             children.className = "tree-children";
             children.style.display = "none";
@@ -1353,7 +1351,7 @@
             item.className = "tree-item";
             item.style.paddingLeft = 8 + depth * 8 + "px";
             const icon = getFileIcon(node.name);
-            item.innerHTML = `<i class="ti ${icon.cls}" style="color:${icon.color}"></i><span class="tree-item-name">${node.name}</span>`;
+            item.innerHTML = `<i class="ti ${icon.cls}" style="color:${icon.color}"></i><span class="tree-item-name">${escHtml(node.name)}</span>`;
             item.onclick = () => openFile(node.path);
             container.appendChild(item);
           }
@@ -1432,7 +1430,12 @@
             (tab.path === state.activeTab ? " active" : "") +
             (tab.modified ? " modified" : "");
           const icon = getFileIcon(tab.path);
-          el.innerHTML = `<i class="ti ${icon.cls}" style="color:${icon.color};font-size:13px"></i>${tab.path.split("/").pop()}<span class="tab-close" onclick="closeTab('${tab.path}',event)"><i class="ti ti-x"></i></span>`;
+          el.innerHTML = `<i class="ti ${icon.cls}" style="color:${icon.color};font-size:13px"></i><span>${escHtml(tab.path.split("/").pop())}</span>`;
+          const close = document.createElement("span");
+          close.className = "tab-close";
+          close.innerHTML = '<i class="ti ti-x"></i>';
+          close.onclick = (event) => closeTab(tab.path, event);
+          el.appendChild(close);
           el.onclick = () => activateTab(tab.path);
           container.appendChild(el);
         });
@@ -1472,7 +1475,7 @@
           return;
         }
 
-        body.innerHTML = `<div class="editor-path">${state.rootDir}/${tab.path}</div><textarea id="codeEditor"></textarea>`;
+        body.innerHTML = `<div class="editor-path">${escHtml(state.rootDir)}/${escHtml(tab.path)}</div><textarea id="codeEditor"></textarea>`;
         actions.style.display = "flex";
 
         const ta = document.getElementById("codeEditor");
@@ -1522,10 +1525,9 @@
       }
 
       async function saveCurrentFile() {
-        // At top of saveCurrentFile(), add:
-        if (cmEditor) tab.content = cmEditor.getValue();
         const tab = state.openTabs.find((t) => t.path === state.activeTab);
         if (!tab) return;
+        if (cmEditor) tab.content = cmEditor.getValue();
         try {
           await api("/api/files/write", {
             rootDir: state.rootDir,
@@ -1564,7 +1566,12 @@
         state.contextFiles.forEach((path) => {
           const chip = document.createElement("div");
           chip.className = "context-chip";
-          chip.innerHTML = `<i class="ti ti-file-code"></i>${path.split("/").pop()}<span class="remove" onclick="removeFromContext('${path}')"><i class="ti ti-x"></i></span>`;
+          chip.innerHTML = `<i class="ti ti-file-code"></i><span>${escHtml(path.split("/").pop())}</span>`;
+          const remove = document.createElement("span");
+          remove.className = "remove";
+          remove.innerHTML = '<i class="ti ti-x"></i>';
+          remove.onclick = () => removeFromContext(path);
+          chip.appendChild(remove);
           chips.appendChild(chip);
         });
         if (state.contextFiles.length) {
@@ -1583,7 +1590,14 @@
         state.contextFiles.forEach((path) => {
           const chip = document.createElement("div");
           chip.className = "open-file-chip";
-          chip.innerHTML = `<i class="ti ti-file-code" style="font-size:13px;color:var(--accent)"></i><span>${path.split("/").pop()}</span><i class="ti ti-x close-btn" onclick="removeFromContext('${path}')"></i>`;
+          chip.innerHTML = `<i class="ti ti-file-code" style="font-size:13px;color:var(--accent)"></i><span>${escHtml(path.split("/").pop())}</span>`;
+          const remove = document.createElement("i");
+          remove.className = "ti ti-x close-btn";
+          remove.onclick = (event) => {
+            event.stopPropagation();
+            removeFromContext(path);
+          };
+          chip.appendChild(remove);
           chip.onclick = () => openFile(path);
           list.appendChild(chip);
         });
@@ -1696,6 +1710,9 @@
         });
         el.querySelectorAll(".diff-toggle").forEach((btn) => {
           btn.onclick = () => toggleDiff(btn);
+        });
+        el.querySelectorAll(".copy-btn").forEach((btn) => {
+          btn.onclick = () => copyCode(btn);
         });
         return el;
       }
@@ -1837,7 +1854,9 @@
       function parseApplyJson(raw) {
         try {
           return JSON.parse(raw.trim());
-        } catch {}
+        } catch (e) {
+          console.log("parse failed:", e.message, raw.slice(0, 100)); // add this
+        }
         const match = raw.match(/\{[\s\S]*\}/);
         if (match) {
           try {
@@ -1848,17 +1867,24 @@
       }
 
       function formatContent(text) {
-        text = text.replace(/```apply\r?\n?([\s\S]*?)```/g, (_, raw) => {
+        const blocks = [];
+        const stash = (html) => {
+          const token = `@@COPILOT_BLOCK_${blocks.length}@@`;
+          blocks.push(html);
+          return token;
+        };
+
+        text = String(text).replace(/```apply\s*([\s\S]*?)```/g, (_, raw) => {
           const data = parseApplyJson(raw);
           if (!data)
-            return `<div class="apply-block" style="border-color:rgba(248,81,73,.4);background:rgba(248,81,73,.08)"><div class="apply-block-header"><i class="ti ti-alert-triangle" style="color:var(--red)"></i><span style="color:var(--red);font-size:12px;font-weight:600">Could not parse apply block</span></div><pre style="margin:6px 0 0;font-size:11px"><code>${escHtml(raw.trim())}</code></pre></div>`;
+            return stash(`<div class="apply-block" style="border-color:rgba(248,81,73,.4);background:rgba(248,81,73,.08)"><div class="apply-block-header"><i class="ti ti-alert-triangle" style="color:var(--red)"></i><span style="color:var(--red);font-size:12px;font-weight:600">Could not parse apply block</span></div><pre style="margin:6px 0 0;font-size:11px"><code>${escHtml(raw.trim())}</code></pre></div>`);
           if (!data.filePath)
-            return `<div class="apply-block" style="border-color:rgba(248,81,73,.4);background:rgba(248,81,73,.08)"><div class="apply-block-header"><i class="ti ti-alert-triangle" style="color:var(--red)"></i><span style="color:var(--red);font-size:12px;font-weight:600">Missing filePath</span></div></div>`;
+            return stash(`<div class="apply-block" style="border-color:rgba(248,81,73,.4);background:rgba(248,81,73,.08)"><div class="apply-block-header"><i class="ti ti-alert-triangle" style="color:var(--red)"></i><span style="color:var(--red);font-size:12px;font-weight:600">Missing filePath</span></div></div>`);
           if (data.content === undefined || data.content === null)
-            return `<div class="apply-block" style="border-color:rgba(210,153,34,.4);background:rgba(210,153,34,.08)"><div class="apply-block-header"><i class="ti ti-alert-triangle" style="color:var(--yellow)"></i><span style="color:var(--yellow);font-size:12px;font-weight:600">AI returned empty content for ${escHtml(data.filePath)}</span></div><p style="font-size:12px;color:var(--text2);margin:4px 0 0">Ask again: "Please provide the complete file content"</p></div>`;
+            return stash(`<div class="apply-block" style="border-color:rgba(210,153,34,.4);background:rgba(210,153,34,.08)"><div class="apply-block-header"><i class="ti ti-alert-triangle" style="color:var(--yellow)"></i><span style="color:var(--yellow);font-size:12px;font-weight:600">AI returned empty content for ${escHtml(data.filePath)}</span></div><p style="font-size:12px;color:var(--text2);margin:4px 0 0">Ask again: "Please provide the complete file content"</p></div>`);
           const encoded = encodeURIComponent(JSON.stringify(data));
           const lineCount = String(data.content).split("\n").length;
-          return `<div class="apply-block" data-apply-json="${encoded}">
+          return stash(`<div class="apply-block" data-apply-json="${encoded}">
       <div class="apply-block-header">
         <i class="ti ti-file-check" style="color:var(--green)"></i>
         <span class="apply-block-title">${data.action === "create" ? "Create" : "Edit"} file</span>
@@ -1867,50 +1893,18 @@
         <button class="apply-btn" data-json="${encoded}"><i class="ti ti-check"></i> Apply</button>
       </div>
       <div style="font-size:11px;color:var(--text3);margin-top:4px">${lineCount} lines</div>
-    </div>`;
+    </div>`);
         });
         text = text.replace(
-          /```(\w+)?\r?\n([\s\S]*?)```/g,
-          (_, lang, code) => `<pre><code>${escHtml(code.trim())}</code></pre>`,
+          /```([\w-]+)?\r?\n([\s\S]*?)```/g,
+          (_, lang, code) => stash(`<div class="pre-wrap"><pre><code>${escHtml(code.trim())}</code></pre><button class="copy-btn" data-code="${encodeURIComponent(code.trim())}"><i class="ti ti-copy"></i> Copy</button></div>`),
         );
+        text = escHtml(text);
         text = text.replace(/`([^`]+)`/g, "<code>$1</code>");
         text = text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+        text = text.replace(/\r?\n/g, "<br>");
+        text = text.replace(/@@COPILOT_BLOCK_(\d+)@@/g, (_, index) => blocks[Number(index)] || "");
         return text;
-      }
-
-      async function applyCode(btn) {
-        const data = JSON.parse(decodeURIComponent(btn.dataset.json));
-        if (!data.filePath) {
-          alert("filePath is missing");
-          return;
-        }
-        if (data.content === undefined || data.content === null) {
-          alert(
-            "content is missing — ask the AI to provide the full file again",
-          );
-          return;
-        }
-        try {
-          await api("/api/files/write", {
-            rootDir: state.rootDir,
-            filePath: data.filePath,
-            content: data.content,
-          });
-          btn.className = "apply-btn applied";
-          btn.innerHTML = '<i class="ti ti-check"></i> Applied';
-          const tab = state.openTabs.find((t) => t.path === data.filePath);
-          if (tab) {
-            tab.content = data.content;
-            if (cmEditor && state.activeTab === data.filePath)
-              cmEditor.setValue(data.content);
-            tab.modified = false;
-            renderTabs();
-            renderEditor();
-          }
-          loadTree();
-        } catch (e) {
-          alert("Apply failed: " + e.message);
-        }
       }
 
       // ── Typing indicator ──────────────────────────────────────────
@@ -1982,9 +1976,8 @@
       // ── Undo/Redo stack ───────────────────────────────────────────
       // CodeMirror handles undo/redo natively via Ctrl+Z / Ctrl+Y
       // This adds undo for AI-applied changes
-      const applyHistory = []; // { filePath, before, after }
+      const applyHistory = []; // { filePath, before, after, created }
 
-      // Patch applyCode to save undo state — replace your existing applyCode:
       async function applyCode(btn) {
         const data = JSON.parse(decodeURIComponent(btn.dataset.json));
         if (!data.filePath) {
@@ -1996,7 +1989,6 @@
           return;
         }
         try {
-          // Read current content for undo
           let before = "";
           try {
             const r = await api("/api/files/read", {
@@ -2004,19 +1996,25 @@
               filePath: data.filePath,
             });
             before = r.content;
-          } catch {}
+          } catch (error) {
+            if (data.action !== "create") {
+              throw new Error(
+                `Cannot capture the original file for undo: ${error.message}`,
+              );
+            }
+          }
 
-          await api("/api/files/write", {
+          const writeResult = await api("/api/files/write", {
             rootDir: state.rootDir,
             filePath: data.filePath,
             content: data.content,
           });
 
-          // Save undo entry
           applyHistory.push({
             filePath: data.filePath,
             before,
             after: data.content,
+            created: writeResult.created,
           });
           updateUndoBtn();
 
@@ -2043,16 +2041,32 @@
       }
 
       async function undoLastApply() {
-        const entry = applyHistory.pop();
+        const entry = applyHistory[applyHistory.length - 1];
         if (!entry) return;
         try {
-          await api("/api/files/write", {
-            rootDir: state.rootDir,
-            filePath: entry.filePath,
-            content: entry.before,
-          });
+          if (entry.created) {
+            await api("/api/files/delete", {
+              rootDir: state.rootDir,
+              filePath: entry.filePath,
+            });
+          } else {
+            await api("/api/files/write", {
+              rootDir: state.rootDir,
+              filePath: entry.filePath,
+              content: entry.before,
+            });
+          }
           const tab = state.openTabs.find((t) => t.path === entry.filePath);
-          if (tab) {
+          if (tab && entry.created) {
+            state.openTabs = state.openTabs.filter(
+              (t) => t.path !== entry.filePath,
+            );
+            if (state.activeTab === entry.filePath) {
+              state.activeTab = state.openTabs[0]?.path || null;
+            }
+            renderTabs();
+            renderEditor();
+          } else if (tab) {
             tab.content = entry.before;
             if (cmEditor && state.activeTab === entry.filePath)
               cmEditor.setValue(entry.before);
@@ -2060,38 +2074,17 @@
             renderTabs();
             renderEditor();
           }
+          applyHistory.pop();
           updateUndoBtn();
+          loadTree();
         } catch (e) {
           alert("Undo failed: " + e.message);
         }
       }
 
       // ── Copy button on code blocks ────────────────────────────────
-      // Patch formatContent to wrap pre blocks — replace the pre regex line:
-      // Find this in formatContent:
-      //   text = text.replace(/```(\w+)?\r?\n([\s\S]*?)```/g, ...
-      // And replace with this — we patch it here instead:
-      const _origFormatContent = formatContent;
-      window.formatContent = function (text) {
-        let out = _origFormatContent(text);
-        // Wrap every <pre> in a .pre-wrap with a copy button
-        out = out.replace(
-          /<pre><code>([\s\S]*?)<\/code><\/pre>/g,
-          (_, code) => {
-            const escaped = code.replace(/'/g, "&#39;");
-            return `<div class="pre-wrap"><pre><code>${code}</code></pre><button class="copy-btn" onclick="copyCode(this,'${escaped}')"><i class="ti ti-copy"></i> Copy</button></div>`;
-          },
-        );
-        return out;
-      };
-
-      function copyCode(btn, code) {
-        const text = code
-          .replace(/&lt;/g, "<")
-          .replace(/&gt;/g, ">")
-          .replace(/&amp;/g, "&")
-          .replace(/&quot;/g, '"')
-          .replace(/&#39;/g, "'");
+      function copyCode(btn) {
+        const text = decodeURIComponent(btn.dataset.code);
         navigator.clipboard.writeText(text).then(() => {
           btn.classList.add("copied");
           btn.innerHTML = '<i class="ti ti-check"></i> Copied';
