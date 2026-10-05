@@ -1,35 +1,60 @@
 # Local Copilot
 
-A local Copilot-style web IDE that lets you browse, edit, and chat about your project files using the DeepSeek API.
+A local web editor for browsing project files, editing code, and chatting with an AI assistant.
 
-![Alt text](image2.png)
+![Local Copilot editor and AI chat](public/workbench-preview.png)
 
-## Run locally
+## Get started
+
+Requires Node.js and npm. Run these commands in the project folder:
 
 ```bash
 npm install
 npm start
 ```
 
-Open `http://127.0.0.1:3000`, enter an absolute project path, and add your
-DeepSeek API key in Settings. The server binds to your computer only by
-default; set `HOST` explicitly if you intentionally need network access.
-On Windows, you can also start it with `run.bat` after installing dependencies.
+Open [127.0.0.1:3000](http://127.0.0.1:3000/), then:
 
-## Safety and limits
+1. Click **Browse Folder** to open your project.
+2. Open **Settings**, choose a provider, and enter its API key.
+3. Click **Load models** or enter a text chat model ID, then **Save**.
+4. Open a file and click **Send to Chat** to attach it before asking a question.
 
-- Project paths must be absolute and file operations cannot leave the selected root.
-- Hidden folders, dependency folders, build output, and symbolic links are omitted from the explorer.
-- Individual files are limited to 2 MB and the explorer is limited to 10,000 entries.
-- AI-created files can be removed again with **Undo Apply**.
+On Windows, you can also use `run.bat` after installing dependencies. Restart the server and refresh the page after backend updates.
 
-Run the regression checks with `npm test`.
+## What it does
 
-## Features
+- Browse files and switch between projects with separate chat history and context.
+- Edit code with syntax highlighting, Find/Replace, Go to Line, bracket matching, and per-file undo history.
+- Collapse or resize either side panel. Layout settings are remembered, and hiding chat keeps an active AI request running.
+- Attach files to chat, including current unsaved edits in open files.
+- Preview AI changes with **Show diff**, write them with **Apply**, and revert them with **Undo Apply**.
 
-- 📁 **File Explorer** — browse your local project folder
-- 📝 **Code Editor** — open and edit files with syntax-aware textarea
-- 💬 **AI Chat** — chat with DeepSeek about your code
-- 🧠 **File Context** — attach open files to the chat context
-- ✅ **One-click Apply** — AI-suggested edits applied directly to disk
-- 🆕 **File Creation** — AI can create new files in your project
+## AI providers
+
+Supports **DeepSeek, OpenAI, Claude, Gemini**, and **custom OpenAI-compatible APIs**. Change the provider, model, and output limit in Settings. Each provider keeps its own key and model settings.
+
+Custom providers need an API base URL, such as `https://example.com/v1`. Local compatible servers can run without an API key.
+
+The AI sees the files you attach, not your entire project folder. Attached code is sent to the selected provider. Saved API keys stay in your browser; API access and billing depend on your provider account.
+
+## Shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| `Ctrl+P` | Quick Open |
+| `Ctrl+B` | Toggle Explorer |
+| `Ctrl+Alt+B` | Toggle AI chat |
+| `Ctrl+S` | Save file |
+| `Ctrl+F` / `Ctrl+H` | Find / Replace |
+| `Ctrl+G` | Go to Line |
+| `Ctrl+/` | Toggle comment |
+
+## Development
+
+```bash
+npm run dev
+npm test
+```
+
+The server listens on `127.0.0.1` by default. Files are limited to 2 MB each, and the explorer lists up to 10,000 entries.

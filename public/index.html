@@ -966,6 +966,11 @@
         opacity: 1;
       }
     </style>
+    <link rel="stylesheet" href="folder-browser.css" />
+    <script src="folder-browser.js" defer></script>
+    <link rel="stylesheet" href="workbench.css" />
+    <script src="provider-settings.js" defer></script>
+    <script src="workbench.js" defer></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css"
@@ -982,6 +987,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/clike/clike.js"></script>
     <!-- Crucial for PHP! -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/php/php.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/dialog/dialog.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/dialog/dialog.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/search/searchcursor.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/search/search.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/matchbrackets.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closebrackets.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/selection/active-line.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/comment/comment.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/markdown/markdown.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/sql/sql.js"></script>
   </head>
   <body>
     <div class="app">
@@ -990,6 +1006,9 @@
           <i class="ti ti-heart"></i> Copilot ni agwen
         </div>
         <div class="topbar-sep"></div>
+        <button class="btn-sm" id="toggleSidebarBtn" onclick="toggleSidebar()" aria-label="Toggle Explorer" aria-controls="projectSidebar" aria-expanded="true"><i class="ti ti-layout-sidebar" aria-hidden="true"></i> Explorer</button>
+        <button class="btn-sm" onclick="openQuickFile()" title="Quick Open (Ctrl+P)"><i class="ti ti-search" aria-hidden="true"></i> Quick Open</button>
+        <button class="btn-sm" id="toggleChatBtn" onclick="toggleChat()" aria-label="Toggle AI chat" aria-controls="aiChatPanel" aria-expanded="true"><i class="ti ti-layout-sidebar-right" aria-hidden="true"></i> Chat</button>
         <button
           class="btn-sm"
           id="undoApplyBtn"
@@ -1006,19 +1025,24 @@
         </button>
       </header>
 
-      <aside class="sidebar">
+      <aside class="sidebar" id="projectSidebar">
+        <div class="sidebar-title"><span>Explorer</span><button class="panel-close" onclick="toggleSidebar()" aria-label="Hide Explorer"><i class="ti ti-x" aria-hidden="true"></i></button></div>
         <div class="sidebar-label">Project</div>
         <div class="root-input-wrap">
           <input
             class="root-input"
             id="rootDir"
-            placeholder="/path/to/project"
+            placeholder="Project folder path"
+            aria-label="Project folder path"
           />
-          <button class="btn-sm btn-primary" onclick="loadTree()">
+          <button class="btn-sm btn-primary" onclick="loadTree()" aria-label="Load project">
             <i class="ti ti-refresh"></i>
           </button>
         </div>
-        <div class="sidebar-label">Explorer</div>
+        <button class="btn-sm folder-browse-button" id="browseFolderBtn" onclick="openFolderBrowser()">
+          <i class="ti ti-folder" aria-hidden="true"></i> Browse Folder
+        </button>
+        <div class="sidebar-label">Files</div>
         <div class="file-tree" id="fileTree">
           <div style="padding: 8px; color: var(--text3); font-size: 12px">
             Enter a project path above
@@ -1028,10 +1052,20 @@
         <div class="open-files-list" id="contextList"></div>
       </aside>
 
+      <div class="panel-divider" id="sidebarResizer" role="separator" tabindex="0" aria-label="Resize Explorer" aria-orientation="vertical" aria-valuemin="160" aria-valuemax="1000" aria-valuenow="260"></div>
       <main class="main">
         <div class="editor-chat-split" id="editorChatSplit">
           <div class="editor-pane">
             <div class="editor-tabs" id="editorTabs"></div>
+            <div class="editor-toolbar">
+              <button class="btn-sm" onclick="editorCommand('findPersistent')" title="Find (Ctrl+F)">Find</button>
+              <button class="btn-sm" onclick="editorCommand('replace')" title="Replace (Ctrl+H)">Replace</button>
+              <button class="btn-sm" onclick="goToLine()" title="Go to line (Ctrl+G)">Go to Line</button>
+              <span class="toolbar-spacer"></span>
+              <button class="btn-sm" id="wrapBtn" onclick="toggleEditorWrap()" aria-pressed="false">Wrap</button>
+              <button class="btn-sm" onclick="changeEditorFont(-1)" aria-label="Decrease editor font size">A−</button>
+              <button class="btn-sm" onclick="changeEditorFont(1)" aria-label="Increase editor font size">A+</button>
+            </div>
             <div class="editor-body" id="editorBody">
               <div class="empty-editor">
                 <i class="ti ti-file-code"></i>
@@ -1062,10 +1096,11 @@
               >
             </div>
           </div>
-          <div class="resizer" id="resizer"></div>
-          <div class="chat-pane">
+          <div class="resizer panel-divider" id="resizer" role="separator" tabindex="0" aria-label="Resize AI chat" aria-orientation="vertical" aria-valuemin="220" aria-valuemax="1000" aria-valuenow="420"></div>
+          <div class="chat-pane" id="aiChatPanel">
             <div class="chat-header">
-              <i class="ti ti-robot"></i> Gwenn chat
+              <i class="ti ti-robot" aria-hidden="true"></i> AI chat
+              <button class="panel-close" onclick="toggleChat()" aria-label="Hide AI chat"><i class="ti ti-x" aria-hidden="true"></i></button>
               <span
                 class="context-badge"
                 id="contextBadge"
@@ -1076,7 +1111,7 @@
             <!-- History control bar -->
             <div class="history-bar">
               <i class="ti ti-history" style="font-size: 14px"></i>
-              <select id="histMode" onchange="onHistModeChange()">
+              <select id="histMode" onchange="onHistModeChange()" aria-label="Chat history context">
                 <option value="full">Full history</option>
                 <option value="last">Last N messages</option>
                 <option value="none">No history (single turn)</option>
@@ -1130,7 +1165,7 @@
                   placeholder="Ask about your code... (Shift+Enter for newline)"
                   rows="1"
                 ></textarea>
-                <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()" aria-label="Send message">
                   <i class="ti ti-send"></i>
                 </button>
               </div>
@@ -1138,39 +1173,54 @@
           </div>
         </div>
       </main>
+      <footer class="workbench-status">
+        <span id="aiRunStatus" role="status" aria-live="polite">Ready</span>
+        <button class="panel-close" id="aiModelLabel" onclick="openSettings()" title="Change AI provider or model"></button>
+        <span id="editorStatus">No file open</span>
+      </footer>
+    </div>
+
+    <div class="modal-overlay hidden" id="quickOpenModal">
+      <div class="modal quick-open" role="dialog" aria-modal="true" aria-labelledby="quickOpenTitle">
+        <h2 id="quickOpenTitle">Quick Open</h2>
+        <input type="text" id="quickOpenInput" aria-label="Search project files" placeholder="Search files by name or path…" autocomplete="off" />
+        <div id="quickOpenList" class="quick-open-list"></div>
+        <div class="modal-actions"><button class="btn-sm" onclick="closeQuickFile()">Close</button></div>
+      </div>
+    </div>
+
+    <div class="modal-overlay hidden" id="folderBrowserModal">
+      <div class="modal folder-browser" role="dialog" aria-modal="true" aria-labelledby="folderBrowserTitle">
+        <h2 id="folderBrowserTitle">Choose project folder</h2>
+        <div class="folder-browser-toolbar">
+          <button class="btn-sm" id="folderDrivesBtn" onclick="navigateFolder(null)">Drives</button>
+          <button class="btn-sm" id="folderUpBtn" onclick="navigateFolder(folderBrowserParent)">Up</button>
+        </div>
+        <div id="folderBrowserPath" class="folder-browser-path"></div>
+        <div id="folderBrowserStatus" role="status" aria-live="polite"></div>
+        <div id="folderBrowserList" class="folder-browser-list" aria-label="Folders"></div>
+        <div class="modal-actions">
+          <button class="btn-sm" onclick="closeFolderBrowser()">Cancel</button>
+          <button class="btn-sm btn-primary" id="folderSelectBtn" onclick="selectProjectFolder()" disabled>Open this folder</button>
+        </div>
+      </div>
     </div>
 
     <div class="modal-overlay hidden" id="settingsModal">
-      <div class="modal">
-        <h2><i class="ti ti-settings"></i> Settings</h2>
-        <div>
-          <label>DeepSeek API Key</label>
-          <input type="password" id="apiKeyInput" placeholder="sk-..." />
-        </div>
-        <hr class="modal-sep" />
-        <div>
-          <label>Backend URL</label>
-          <input type="text" id="backendUrl" value="http://localhost:3000" />
-        </div>
-        <hr class="modal-sep" />
-        <div>
-          <label>DeepSeek Balance</label>
-          <div style="display: flex; gap: 8px; align-items: center">
-            <button class="btn-sm" onclick="checkBalance()">
-              <i class="ti ti-wallet"></i> Check Balance
-            </button>
-            <span
-              id="balanceResult"
-              style="font-size: 12px; color: var(--text2)"
-            ></span>
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button class="btn-sm" onclick="closeSettings()">Cancel</button>
-          <button class="btn-sm btn-primary" onclick="saveSettings()">
-            <i class="ti ti-check"></i> Save
-          </button>
-        </div>
+      <div class="modal settings-modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+        <h2 id="settingsTitle">AI Settings</h2>
+        <div><label for="providerInput">Provider</label><select id="providerInput" onchange="selectProviderDraft()">
+          <option value="deepseek">DeepSeek</option><option value="openai">OpenAI</option><option value="anthropic">Claude (Anthropic)</option><option value="gemini">Gemini (Google)</option><option value="custom">Custom / OpenAI-compatible</option>
+        </select></div>
+        <div><label for="apiKeyInput" id="apiKeyLabel">API key</label><input type="password" id="apiKeyInput" placeholder="Provider API key" autocomplete="off" /></div>
+        <div id="customEndpointField" hidden><label for="apiBaseUrl">API base URL</label><input type="text" id="apiBaseUrl" placeholder="https://example.com/v1" /></div>
+        <div><label for="modelInput">Model ID</label><div class="settings-row"><input type="text" id="modelInput" list="modelOptions" placeholder="Load models or enter a model ID" autocomplete="off" /><button class="btn-sm" id="loadModelsBtn" onclick="loadProviderModels()">Load models</button></div><datalist id="modelOptions"></datalist></div>
+        <div id="modelLoadStatus" class="settings-help" role="status" aria-live="polite"></div>
+        <div><label for="maxTokensInput">Maximum output tokens</label><input type="number" id="maxTokensInput" min="512" max="65536" step="512" value="8192" /></div>
+        <p class="settings-help">Chat and attached code are sent to the selected provider. Each provider uses its own API key and billing. Saved keys stay in this browser.</p>
+        <div><label for="backendUrl">Local backend URL</label><input type="text" id="backendUrl" /></div>
+        <div id="deepseekBalanceField"><label>DeepSeek Balance</label><div class="settings-row"><button class="btn-sm" onclick="checkBalance()">Check Balance</button><span id="balanceResult" class="settings-help"></span></div></div>
+        <div class="modal-actions"><button class="btn-sm" onclick="closeSettings()">Cancel</button><button class="btn-sm btn-primary" onclick="saveSettings()">Save</button></div>
       </div>
     </div>
 
@@ -1298,13 +1348,49 @@
       }
 
       // ── File Tree ─────────────────────────────────────────────────
+      function projectSessionKey(rootDir) {
+        return "projectSession:" + rootDir.replace(/\\/g, "/").replace(/\/$/, "").toLowerCase();
+      }
+
       async function loadTree() {
-        const rootDir = document.getElementById("rootDir").value.trim();
-        if (!rootDir) return;
-        state.rootDir = rootDir;
-        localStorage.setItem("rootDir", rootDir);
+        const input = document.getElementById("rootDir");
+        const requestedRoot = input.value.trim();
+        if (!requestedRoot) return false;
+        if (state.loading) {
+          input.value = state.rootDir;
+          alert("Wait for the current AI response before changing projects.");
+          return false;
+        }
+        const switching = state.rootDir && projectSessionKey(requestedRoot) !== projectSessionKey(state.rootDir);
+        if (switching && state.openTabs.some(tab => tab.modified)) {
+          input.value = state.rootDir;
+          alert("Save or close modified files before changing projects.");
+          return false;
+        }
         try {
-          const res = await api("/api/files/list", { rootDir });
+          const res = await api("/api/files/list", { rootDir: requestedRoot });
+          const rootDir = res.rootDir || requestedRoot;
+          if (state.rootDir && projectSessionKey(rootDir) !== projectSessionKey(state.rootDir)) {
+            localStorage.setItem(projectSessionKey(state.rootDir), JSON.stringify({ messages: state.messages, contextFiles: state.contextFiles }));
+            let session = {};
+            try { session = JSON.parse(localStorage.getItem(projectSessionKey(rootDir)) || "{}"); } catch {}
+            state.messages = Array.isArray(session.messages) ? session.messages : [];
+            state.contextFiles = Array.isArray(session.contextFiles) ? session.contextFiles : [];
+            state.openTabs = [];
+            state.activeTab = null;
+            applyHistory.length = 0;
+            saveState();
+            renderTabs();
+            renderEditor();
+            renderContextChips();
+            renderContextList();
+            renderMessages();
+            updateUndoBtn();
+            updateTokenEst();
+          }
+          state.rootDir = rootDir;
+          input.value = rootDir;
+          localStorage.setItem("rootDir", rootDir);
           renderTree(res.tree, document.getElementById("fileTree"));
           if (res.truncated) {
             const note = document.createElement("div");
@@ -1312,9 +1398,11 @@
             note.textContent = "Explorer limited to 10,000 items";
             document.getElementById("fileTree").appendChild(note);
           }
+          return true;
         } catch (e) {
-          document.getElementById("fileTree").innerHTML =
-            `<div style="padding:8px;color:var(--red);font-size:12px">Error: ${escHtml(e.message)}</div>`;
+          input.value = state.rootDir;
+          alert("Could not load project: " + e.message);
+          return false;
         }
       }
 
@@ -1391,6 +1479,7 @@
           state.openTabs.push({
             path: filePath,
             content: res.content,
+            savedContent: res.content,
             modified: false,
           });
           activateTab(filePath);
@@ -1436,6 +1525,7 @@
           close.innerHTML = '<i class="ti ti-x"></i>';
           close.onclick = (event) => closeTab(tab.path, event);
           el.appendChild(close);
+          el.title = tab.path;
           el.onclick = () => activateTab(tab.path);
           container.appendChild(el);
         });
@@ -1450,7 +1540,9 @@
           html: "htmlmixed",
           css: "css",
           js: "javascript",
-          ts: "javascript",
+          ts: { name:"javascript", typescript:true },
+          py: "python",
+          md: "markdown",
           xml: "xml",
           json: "application/json",
           sql: "text/x-sql",
@@ -1460,68 +1552,58 @@
       function renderEditor() {
         const body = document.getElementById("editorBody");
         const actions = document.getElementById("editorActions");
-        const tab = state.openTabs.find((t) => t.path === state.activeTab);
-
-        if (cmEditor) {
-          try {
-            cmEditor.toTextArea();
-          } catch (e) {}
-          cmEditor = null;
-        }
-
+        const tab = state.openTabs.find(t => t.path === state.activeTab);
         if (!tab) {
-          body.innerHTML = `<div class="empty-editor"><i class="ti ti-file-code"></i><p>Open a file to start editing</p></div>`;
+          if (cmEditor) { cmEditor.toTextArea(); cmEditor = null; }
+          body.innerHTML = '<div class="empty-editor"><i class="ti ti-file-code"></i><p>Open a file to start editing</p><p>Ctrl+P to find a project file</p></div>';
           actions.style.display = "none";
+          if (typeof refreshEditorStatus === "function") refreshEditorStatus();
           return;
         }
-
-        body.innerHTML = `<div class="editor-path">${escHtml(state.rootDir)}/${escHtml(tab.path)}</div><textarea id="codeEditor"></textarea>`;
         actions.style.display = "flex";
-
-        const ta = document.getElementById("codeEditor");
-        if (!ta) return;
-
-        // Set value directly on textarea before CodeMirror init
-        ta.value = tab.content;
-
-        try {
-          cmEditor = CodeMirror.fromTextArea(ta, {
-            mode: getModeForFile(tab.path),
-            theme: "dracula",
-            lineNumbers: true,
-            startOpen: true,
-            indentWithTabs: false,
-            tabSize: 2,
-            indentUnit: 2,
-            lineWrapping: false,
-            autofocus: true,
-            extraKeys: {
-              Tab: (cm) => cm.replaceSelection("  "),
-              "Ctrl-S": () => saveCurrentFile(),
-              "Cmd-S": () => saveCurrentFile(),
-            },
-          });
-
-          cmEditor.on("change", () => {
-            tab.content = cmEditor.getValue();
-            if (!tab.modified) {
-              tab.modified = true;
-              renderTabs();
-            }
-          });
-        } catch (e) {
-          console.error("CodeMirror init error:", e);
-          // Fallback to plain textarea
-          ta.style.cssText =
-            "flex:1;width:100%;background:var(--bg);color:var(--text);border:none;outline:none;padding:16px;font-family:var(--font-mono);font-size:13px;line-height:1.65;resize:none";
-          ta.addEventListener("input", () => {
-            tab.content = ta.value;
-            if (!tab.modified) {
-              tab.modified = true;
-              renderTabs();
-            }
-          });
+        if (!cmEditor) {
+          body.innerHTML = '<div class="editor-path" id="editorBreadcrumb"></div><textarea id="codeEditor"></textarea>';
+          const textarea = document.getElementById("codeEditor");
+          try {
+            cmEditor = CodeMirror.fromTextArea(textarea, {
+              theme: "dracula", lineNumbers: true, indentUnit: 2, tabSize: 2, indentWithTabs: false,
+              matchBrackets: true, autoCloseBrackets: true, styleActiveLine: true,
+              ...(typeof workbenchEditorOptions === "function" ? workbenchEditorOptions() : {}),
+              extraKeys: {
+                Tab: cm => cm.somethingSelected() ? cm.indentSelection("add") : cm.replaceSelection("  "),
+                "Shift-Tab": cm => cm.indentSelection("subtract"),
+                "Ctrl-S": () => saveCurrentFile(), "Cmd-S": () => saveCurrentFile(),
+                "Ctrl-F": "findPersistent", "Cmd-F": "findPersistent", "Ctrl-H": "replace",
+                "Ctrl-/": "toggleComment", "Cmd-/": "toggleComment",
+                "Ctrl-G": () => goToLine(),
+              },
+            });
+            cmEditor.on("cursorActivity", () => { if (typeof refreshEditorStatus === "function") refreshEditorStatus(); });
+          } catch (error) {
+            cmEditor = null;
+            textarea.value = tab.content;
+            textarea.style.cssText = "flex:1;width:100%;background:var(--bg);color:var(--text);padding:16px;font-family:var(--font-mono);border:0;resize:none";
+            textarea.oninput = () => { tab.content = textarea.value; tab.modified = tab.content !== tab.savedContent; renderTabs(); };
+            document.getElementById("editorBreadcrumb").textContent = state.rootDir + "/" + tab.path;
+            return;
+          }
         }
+        if (!tab.doc) {
+          tab.savedContent ??= tab.content;
+          tab.doc = new CodeMirror.Doc(tab.content, getModeForFile(tab.path));
+          tab.doc.on("change", () => {
+            tab.content = tab.doc.getValue();
+            tab.modified = tab.content !== tab.savedContent;
+            renderTabs();
+            if (typeof refreshEditorStatus === "function") refreshEditorStatus();
+          });
+        } else if (tab.doc.getValue() !== tab.content) {
+          tab.doc.setValue(tab.content);
+        }
+        if (cmEditor.getDoc() !== tab.doc) cmEditor.swapDoc(tab.doc);
+        document.getElementById("editorBreadcrumb").textContent = state.rootDir + "/" + tab.path;
+        cmEditor.refresh(); cmEditor.focus();
+        if (typeof refreshEditorStatus === "function") refreshEditorStatus();
       }
 
       async function saveCurrentFile() {
@@ -1534,8 +1616,10 @@
             filePath: tab.path,
             content: tab.content,
           });
+          tab.savedContent = tab.content;
           tab.modified = false;
           renderTabs();
+          if (typeof refreshEditorStatus === "function") refreshEditorStatus();
           const st = document.getElementById("saveStatus");
           st.classList.add("show");
           setTimeout(() => st.classList.remove("show"), 2000);
@@ -1621,59 +1705,40 @@
         const input = document.getElementById("chatInput");
         const text = input.value.trim();
         if (!text) return;
-        if (!state.apiKey) {
-          openSettings();
-          return;
-        }
-
-        input.value = "";
-        state.messages.push({ role: "user", content: text });
-        saveState();
-        renderMessages();
-        showTyping();
-        updateTokenEst();
-
-        const openFiles = [];
-        for (const path of state.contextFiles) {
-          try {
-            const res = await api("/api/files/read", {
-              rootDir: state.rootDir,
-              filePath: path,
-            });
-            openFiles.push({ path, content: res.content });
-          } catch {}
-        }
-
+        if (!state.model || (!state.apiKey && !state.serverKeys?.[state.provider] && state.provider !== "custom")) { openSettings(); return; }
+        const runConfig = { provider:state.provider, model:state.model, baseUrl:state.baseUrl, maxTokens:state.maxTokens, apiKey:state.apiKey };
         state.loading = true;
         document.getElementById("sendBtn").disabled = true;
-
+        updateAiStatus();
+        input.value = "";
+        state.messages.push({ role:"user", content:text });
+        saveState(); renderMessages(); showTyping(); updateTokenEst();
         try {
-          const res = await api(
-            "/api/chat",
-            {
-              messages: getMessagesToSend(),
-              rootDir: state.rootDir,
-              openFiles,
-            },
-            { "x-api-key": state.apiKey },
-          );
-
+          const openFiles = [];
+          for (const path of state.contextFiles) {
+            const tab = state.openTabs.find(tab => tab.path === path);
+            if (tab) openFiles.push({ path, content:tab.content });
+            else {
+              const result = await api("/api/files/read", { rootDir:state.rootDir, filePath:path });
+              openFiles.push({ path, content:result.content });
+            }
+          }
+          const res = await api("/api/chat", {
+            messages:getMessagesToSend().filter(message => !message.error).map(({role,content}) => ({role,content})),
+            rootDir:state.rootDir, openFiles,
+            provider:runConfig.provider, model:runConfig.model, baseUrl:runConfig.baseUrl, maxTokens:runConfig.maxTokens,
+          }, { "x-api-key":runConfig.apiKey });
           removeTyping();
-          state.messages.push(res.message);
-          saveState();
-          renderMessages();
-          updateTokenEst();
-        } catch (e) {
+          state.messages.push({ ...res.message, incomplete:res.truncated });
+          saveState(); renderMessages(); updateTokenEst();
+        } catch (error) {
           removeTyping();
-          state.messages.push({
-            role: "assistant",
-            content: "❌ Error: " + e.message,
-          });
-          saveState();
-          renderMessages();
+          state.messages.push({ role:"assistant", content:"Error: " + error.message, error:true });
+          saveState(); renderMessages();
         } finally {
           state.loading = false;
           document.getElementById("sendBtn").disabled = false;
+          updateAiStatus();
         }
       }
 
@@ -1706,7 +1771,8 @@
         const content = formatContent(msg.content);
         el.innerHTML = `<div class="msg-avatar">${msg.role === "user" ? "U" : "AI"}</div><div class="msg-body"><div class="msg-role">${msg.role}</div><div class="msg-content">${content}</div></div>`;
         el.querySelectorAll(".apply-btn:not(.applied)").forEach((btn) => {
-          btn.onclick = () => applyCode(btn);
+          if (msg.incomplete) { btn.disabled = true; btn.textContent = "Incomplete response"; }
+          else btn.onclick = () => applyCode(btn);
         });
         el.querySelectorAll(".diff-toggle").forEach((btn) => {
           btn.onclick = () => toggleDiff(btn);
@@ -1714,6 +1780,11 @@
         el.querySelectorAll(".copy-btn").forEach((btn) => {
           btn.onclick = () => copyCode(btn);
         });
+        if (msg.incomplete) {
+          const notice = document.createElement("p");
+          notice.textContent = "Response reached its output limit. Increase the limit and ask again before applying edits.";
+          el.querySelector(".msg-body").appendChild(notice);
+        }
         return el;
       }
 
@@ -1945,34 +2016,6 @@
       document.head.appendChild(style);
 
       // ── Panel resizer ─────────────────────────────────────────────
-      (function initResizer() {
-        const resizer = document.getElementById("resizer");
-        const chat = document.querySelector(".chat-pane");
-        const split = document.getElementById("editorChatSplit");
-        let startX, startW;
-        resizer.addEventListener("mousedown", (e) => {
-          startX = e.clientX;
-          startW = chat.offsetWidth;
-          resizer.classList.add("dragging");
-          document.addEventListener("mousemove", onMove);
-          document.addEventListener("mouseup", onUp);
-          e.preventDefault();
-        });
-        function onMove(e) {
-          const delta = startX - e.clientX; // dragging left = wider chat
-          const newW = Math.min(
-            Math.max(startW + delta, 280),
-            split.offsetWidth * 0.7,
-          );
-          chat.style.width = newW + "px";
-        }
-        function onUp() {
-          resizer.classList.remove("dragging");
-          document.removeEventListener("mousemove", onMove);
-          document.removeEventListener("mouseup", onUp);
-        }
-      })();
-
       // ── Undo/Redo stack ───────────────────────────────────────────
       // CodeMirror handles undo/redo natively via Ctrl+Z / Ctrl+Y
       // This adds undo for AI-applied changes
@@ -2022,6 +2065,7 @@
           btn.innerHTML = '<i class="ti ti-check"></i> Applied';
           const tab = state.openTabs.find((t) => t.path === data.filePath);
           if (tab) {
+            tab.savedContent = data.content;
             tab.content = data.content;
             if (cmEditor && state.activeTab === data.filePath)
               cmEditor.setValue(data.content);
@@ -2067,6 +2111,7 @@
             renderTabs();
             renderEditor();
           } else if (tab) {
+            tab.savedContent = entry.before;
             tab.content = entry.before;
             if (cmEditor && state.activeTab === entry.filePath)
               cmEditor.setValue(entry.before);
