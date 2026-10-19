@@ -40,6 +40,43 @@ test('Claude adapter uses Messages API and normalizes text blocks and truncation
   assert.equal(result.truncated,true);
 });
 
+test('OpenUI uses its fixed Gateway endpoint and free default model', async () => {
+  const {client,calls}=mockClient(textResult);
+  const result=await client.chat({...input,provider:'openui',model:undefined,baseUrl:'https://untrusted.example/v1'});
+  assert.equal(calls[0].url,'https://api.thesys.dev/v1/embed/chat/completions');
+  assert.equal(calls[0].body.model,'google/gemini-3.6-flash-free');
+  assert.match(calls[0].body.messages[0].content,/\]\]>openui:config/);
+  assert.match(calls[0].body.messages[0].content,/fenced apply JSON block OUTSIDE/);
+  assert.equal(calls[0].body.max_tokens,8192);
+  assert.equal(calls[0].options.headers.Authorization,'Bearer test-provider-key');
+  assert.equal(result.message.provider,'openui');
+  assert.equal(result.message.content,'answer');
+});
+
+test('OpenUI normalizes Gateway envelopes without altering UI or apply blocks', async () => {
+  const content='```openui-lang\nroot = TextContent("Summary")\n```\n\n```apply\n{"action":"create","filePath":"test.txt","content":"test"}\n```';
+  const {client}=mockClient({choices:[{message:{content:']]>openui:content?thesys=true\n'+content+'\n]]>openui:end'},finish_reason:'stop'}]});
+  const result=await client.chat({...input,provider:'openui'});
+  assert.equal(result.message.content,content);
+  assert.equal(result.message.provider,'openui');
+});
+
+test('OpenUI discovers free models and only accepts its server credential', async () => {
+  const prior=process.env.THESYS_API_KEY;
+  process.env.THESYS_API_KEY='test-gateway-env';
+  try {
+    const req={headers:{'x-api-key':'test-browser-key'},body:{baseUrl:'https://untrusted.example'}};
+    assert.equal(getApiKey(req,'openui'),'test-gateway-env');
+    delete process.env.THESYS_API_KEY;
+    assert.equal(getApiKey(req,'openui'),'');
+    const {client,calls}=mockClient({data:[{id:'google/test-free'},{id:'openai/paid-model'},{id:'google/test-free'}]});
+    assert.deepEqual(await client.listModels({provider:'openui',apiKey:'test-gateway-key'}),['google/test-free']);
+    assert.equal(calls[0].url,'https://api.thesys.dev/v1/embed/models');
+  } finally {
+    if(prior===undefined) delete process.env.THESYS_API_KEY; else process.env.THESYS_API_KEY=prior;
+  }
+});
+
 test('DeepSeek and Gemini route only to their fixed provider endpoints', async () => {
   for (const [provider, url] of [['deepseek','https://api.deepseek.com/v1/chat/completions'],['gemini','https://generativelanguage.googleapis.com/v1beta/openai/chat/completions']]) {
     const {client,calls}=mockClient({...textResult,choices:[{message:{content:'partial'},finish_reason:'length'}]});
@@ -79,6 +116,65 @@ test('model discovery deduplicates IDs and follows Claude pagination', async () 
 test('missing text yields an actionable error instead of a broken chat message', async () => {
   const {client}=mockClient({choices:[{message:{content:null},finish_reason:'length'}]});
   await assert.rejects(client.chat(input),/no text/);
+});
+
+test('OpenUI completes a bounded read-only tool loop and aggregates request usage', async () => {
+  const calls=[], reads=[];
+  const client=createProviderClient({post:async(url,body)=>{
+    calls.push(structuredClone(body));
+    return {data:calls.length===1 ? {choices:[{message:{content:null,tool_calls:[{id:'read-1',type:'function',function:{name:'obsidian_read',arguments:'{"path":"me.md"}'}}]}}],usage:{prompt_tokens:10,completion_tokens:2,total_tokens:12}} : {...textResult,usage:{prompt_tokens:20,completion_tokens:5,total_tokens:25}}};
+  }});
+  const memory={bootstrap:async()=>'Read-only memory context',tools:[{type:'function',function:{name:'obsidian_read'}}],call:async(name,args)=>{reads.push({name,args});return {path:'me.md',content:'example'};}};
+  const result=await client.chat({...input,provider:'openui',memory});
+  assert.equal(calls.length,2);
+  assert.equal(calls[1].messages.at(-1).role,'tool');
+  assert.equal(calls[1].messages.at(-1).tool_call_id,'read-1');
+  assert.deepEqual(reads,[{name:'obsidian_read',args:{path:'me.md'}}]);
+  assert.deepEqual(result.usage,{prompt_tokens:30,completion_tokens:7,total_tokens:37});
+  assert.equal(result.message.content,'answer');
+});
+
+test('memory is absent unless supplied and invalid tool arguments never reach MCP', async () => {
+  const {client,calls}=mockClient(textResult);
+  await client.chat({...input,provider:'openai'});
+  assert.equal(calls[0].body.tools,undefined);
+  assert.equal(calls[0].body.messages[0].content,input.system);
+  let attempts=0;
+  const loop=createProviderClient({post:async()=>({data:++attempts===1 ? {choices:[{message:{tool_calls:[{id:'bad',function:{name:'vault_delete',arguments:'invalid json'}}]}}]} : textResult})});
+  await loop.chat({...input,provider:'openui',memory:{bootstrap:async()=>'',tools:[],call:async()=>{throw new Error('must not call');}}});
+  assert.equal(attempts,2);
+});
+
+test('all compatible providers support bounded Obsidian tools',async()=>{
+  for(const provider of ['deepseek','openai','gemini','custom']){
+    const requests=[],reads=[];
+    const client=createProviderClient({post:async(url,body)=>{requests.push(structuredClone(body));return{data:requests.length===1?{choices:[{message:{role:'assistant',content:null,tool_calls:[{id:'read',type:'function',function:{name:'obsidian_read',arguments:'{"path":"me.md"}'}}]},finish_reason:'tool_calls'}],usage:{total_tokens:3}}:textResult};}});
+    const result=await client.chat({...input,provider,baseUrl:'http://127.0.0.1:4321/v1',memory:{bootstrap:async()=>'permitted memory',tools:[{type:'function',function:{name:'obsidian_read',parameters:{type:'object'}}}],call:async(name,args)=>{reads.push({name,args});return{content:'read context'};}}});
+    assert.equal(reads.length,1,provider);assert.equal(requests[1].messages.at(-1).role,'tool');assert.equal(result.message.content,'answer');
+    assert.ok(!requests[0].messages[0].content.includes('openui-lang'));
+  }
+});
+
+test('Claude uses native tool schemas and tool results with aggregated usage',async()=>{
+  const requests=[],operations=[];
+  const client=createProviderClient({post:async(url,body)=>{requests.push(structuredClone(body));return{data:requests.length===1?{content:[{type:'tool_use',id:'t1',name:'obsidian_create',input:{title:'Draft',content:'verified lesson'}}],stop_reason:'tool_use',usage:{input_tokens:10,output_tokens:3}}:{content:[{type:'text',text:'Saved the draft.'}],stop_reason:'end_turn',usage:{input_tokens:20,output_tokens:5}}};}});
+  const result=await client.chat({...input,provider:'anthropic',memory:{bootstrap:async()=>'write mode',tools:[{type:'function',function:{name:'obsidian_create',description:'Save draft',parameters:{type:'object'}}}],call:async(name,args)=>{operations.push({name,args});return{saved:true,path:'project/draft.md'};}}});
+  assert.equal(requests[0].tools[0].name,'obsidian_create');assert.deepEqual(requests[0].tools[0].input_schema,{type:'object'});
+  assert.equal(requests[1].messages.at(-1).content[0].type,'tool_result');assert.equal(operations.length,1);
+  assert.equal(result.usage.total_tokens,38);assert.equal(result.message.content,'Saved the draft.');
+});
+
+test('truncated tool calls never execute note writes',async()=>{
+  let writes=0;const memory={bootstrap:async()=>'',tools:[],call:async()=>{writes++;}};
+  const {client}=mockClient({choices:[{message:{content:'incomplete',tool_calls:[{id:'write',function:{name:'obsidian_create',arguments:'{}'}}]},finish_reason:'length'}]});
+  assert.equal((await client.chat({...input,provider:'openai',memory})).truncated,true);assert.equal(writes,0);
+});
+
+test('repeated tool requests stop at the request budget', async () => {
+  let attempts=0;
+  const client=createProviderClient({post:async()=>{attempts++;return {data:{choices:[{message:{tool_calls:[{id:'repeat',function:{name:'obsidian_search',arguments:'{"query":"example"}'}}]}}]}};}});
+  await assert.rejects(client.chat({...input,provider:'openui',memory:{bootstrap:async()=>'',tools:[],call:async()=>({paths:[]})}}),/tool limit/);
+  assert.equal(attempts,5);
 });
 
 test('environment credentials are isolated by provider', () => {

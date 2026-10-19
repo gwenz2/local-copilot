@@ -40,6 +40,7 @@ function projectHarness() {
   const state = { rootDir: 'C:/first', loading: false, openTabs: [], activeTab: null, messages: [{ role: 'user', content: 'first project' }], contextFiles: ['first.js'] };
   const applyHistory = [{ filePath: 'first.js' }];
   const context = { state, applyHistory, alerts: [], localStorage: { getItem: key => store.get(key), setItem: (key, value) => store.set(key, value) }, document: { getElementById: () => input }, api: async (_, body) => ({ rootDir: body.rootDir, tree: [] }) };
+  context.LaptopStore=context.localStorage;
   context.alert = message => context.alerts.push(message);
   for (const name of ['saveState', 'renderTabs', 'renderEditor', 'renderContextChips', 'renderContextList', 'renderMessages', 'updateUndoBtn', 'updateTokenEst', 'renderTree']) context[name] = () => {};
   vm.createContext(context);

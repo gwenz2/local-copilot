@@ -23,7 +23,7 @@ test("inline frontend scripts have valid JavaScript syntax", () => {
 
 // Check the local deferred modules as well as inline startup code.
 test("local frontend modules have valid JavaScript syntax", () => {
-  for (const name of ["folder-browser.js", "provider-settings.js", "workbench.js"]) {
+  for (const name of ["folder-browser.js", "provider-settings.js", "workbench.js", "openui-chat.js", "openui-view.js", "codebench.js", "laptop-store.js", "chat-transport.js", "explorer.js", "chat-scroll.js"]) {
     const source=fs.readFileSync(path.join(__dirname,"..","public",name),"utf8");
     assert.doesNotThrow(()=>new vm.Script(source,{filename:name}));
   }

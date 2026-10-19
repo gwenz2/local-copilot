@@ -62,6 +62,12 @@ test("file API can write, read, and delete within a project", async (t) => {
   assert.equal(readResponse.status, 200);
   assert.deepEqual(await readResponse.json(), { content: "hello" });
 
+  const conflict=await request('/api/files/write',{rootDir:root,filePath:'src/test.txt',content:'overwritten',expectedContent:'stale'});
+  assert.equal(conflict.status,409);
+  assert.equal(fs.readFileSync(path.join(root,'src/test.txt'),'utf8'),'hello');
+  assert.equal((await request('/api/files/write',{rootDir:root,filePath:'src/test.txt',content:'overwritten',expectMissing:true})).status,409);
+  assert.equal((await request('/api/files/delete',{rootDir:root,filePath:'src/test.txt',expectedContent:'stale'})).status,409);
+
   const escapeResponse = await request("/api/files/read", {
     rootDir: root,
     filePath: "../outside.txt",
@@ -74,4 +80,60 @@ test("file API can write, read, and delete within a project", async (t) => {
   });
   assert.equal(deleteResponse.status, 200);
   assert.equal(fs.existsSync(path.join(root, "src", "test.txt")), false);
+});
+
+test("OpenUI frame and local renderer assets are served with network actions blocked", async (t) => {
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise(resolve => server.once("listening", resolve));
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const view = await fetch(base + "/openui-view.html");
+  assert.equal(view.status, 200);
+  assert.match(await view.text(), /connect-src 'none'; form-action 'none'/);
+  for (const asset of ["openui-bundle.min.js", "openui-styles.css"]) {
+    const response = await fetch(base + "/vendor/openui/" + asset);
+    assert.equal(response.status, 200);
+    assert.ok(Number(response.headers.get("content-length")) > 0);
+    await response.body.cancel();
+  }
+});
+
+test("Obsidian modes validate all providers, Off never connects, and nonlocal requests are denied", async (t) => {
+  const server=app.listen(0,'127.0.0.1');
+  await new Promise(resolve=>server.once('listening',resolve));
+  t.after(()=>server.close());
+  const response=await fetch(`http://127.0.0.1:${server.address().port}/api/obsidian/status`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({provider:'openai',obsidianMode:'off'})});
+  assert.equal(response.status,200);assert.deepEqual(await response.json(),{connected:false,mode:'off',project:null});
+  const invalid=await fetch(`http://127.0.0.1:${server.address().port}/api/obsidian/status`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({provider:'openai',obsidianMode:'invalid'})});assert.equal(invalid.status,400);
+  for (const headers of [{host:'untrusted.example'},{origin:'https://untrusted.example'}]) {
+    // Native fetch rewrites Host; use HTTP directly to exercise hostile headers.
+    const status=await new Promise((resolve,reject)=>{
+      const request=require('node:http').request({hostname:'127.0.0.1',port:server.address().port,path:'/api/obsidian/status',method:'POST',headers:{'content-type':'application/json',...headers}},response=>{response.resume();response.on('end',()=>resolve(response.statusCode));});
+      request.on('error',reject);
+      request.end(JSON.stringify({provider:'openui'}));
+    });
+    assert.equal(status,403);
+  }
+  for(const endpoint of ['/API/EXPLORER/ACTION/','/API/EXPLORER/UNDO/','/API/EXPLORER/HISTORY/','/API/OBSIDIAN/STATUS/','/API/OBSIDIAN/CHANGES/','/API/CHAT/','/API/LOCAL-STATE/','/API/LOCAL-CREDENTIALS/','/API/LOCAL-STATE/BOOTSTRAP/']) {
+    const denied=await fetch(`http://127.0.0.1:${server.address().port}${endpoint}`,{method:'POST',headers:{'content-type':'application/json',origin:'https://untrusted.example'},body:'{"provider":"openui","useObsidian":true}'});
+    assert.equal(denied.status,403);
+  }
+});
+
+test("unavailable Obsidian MCP returns a useful status without exposing credentials", async (t) => {
+  const priorUrl=process.env.OBSIDIAN_MCP_URL,priorAuth=process.env.OBSIDIAN_MCP_AUTHORIZATION;
+  process.env.OBSIDIAN_MCP_URL='http://127.0.0.1:1/mcp/';
+  process.env.OBSIDIAN_MCP_AUTHORIZATION='test-private-credential';
+  const server=app.listen(0,'127.0.0.1');
+  await new Promise(resolve=>server.once('listening',resolve));
+  t.after(()=>{
+    server.close();
+    if(priorUrl===undefined) delete process.env.OBSIDIAN_MCP_URL; else process.env.OBSIDIAN_MCP_URL=priorUrl;
+    if(priorAuth===undefined) delete process.env.OBSIDIAN_MCP_AUTHORIZATION; else process.env.OBSIDIAN_MCP_AUTHORIZATION=priorAuth;
+  });
+  const response=await fetch(`http://127.0.0.1:${server.address().port}/api/obsidian/status`,{method:'POST',headers:{'content-type':'application/json'},body:'{"provider":"openui","obsidianMode":"read-only"}'});
+  assert.equal(response.status,503);
+  const text=await response.text();
+  assert.match(text,/Open Obsidian/);
+  assert.ok(!text.includes('test-private-credential'));
 });

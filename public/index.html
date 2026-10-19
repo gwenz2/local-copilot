@@ -3,17 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Copilot ni gwen</title>
+    <title>Draftdrion — by Balajedrion</title>
     <link
       rel="stylesheet"
-      href="https://unpkg.com/@tabler/icons-webfont@2.47.0/tabler-icons.min.css"
+      href="/vendor/tabler/tabler-icons.min.css"
     />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap"
-    />
-
-    <style>
+<style>
       *,
       *::before,
       *::after {
@@ -778,19 +773,6 @@
         position: relative;
       }
 
-      /* 2. Create a separate layer just for the image */
-      .empty-editor::before {
-        content: "";
-        position: absolute;
-        inset: 0; /* Spans the full width and height */
-        background-image: url("test.png");
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        opacity: 0.1; /* Only fades the image */
-        z-index: 0; /* Puts it in the background */
-      }
-
       /* 3. Ensure your text and icons stay on top of the image */
       .empty-editor > * {
         position: relative;
@@ -967,63 +949,74 @@
       }
     </style>
     <link rel="stylesheet" href="folder-browser.css" />
+    <script src="/api/local-state/bootstrap"></script>
+    <script src="laptop-store.js"></script>
     <script src="folder-browser.js" defer></script>
     <link rel="stylesheet" href="workbench.css" />
     <script src="provider-settings.js" defer></script>
     <script src="workbench.js" defer></script>
+    <script src="chat-scroll.js" defer></script>
+    <script src="openui-chat.js" defer></script>
+    <script src="codebench.js" defer></script>
+    <script src="chat-transport.js" defer></script>
+    <script src="explorer.js" defer></script>
+    <link rel="stylesheet" href="codebench.css" />
     <link
       rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css"
+      href="/vendor/codemirror/codemirror.min.css"
     />
     <link
       rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css"
+      href="/vendor/codemirror/theme/dracula.min.css"
     />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/clike/clike.js"></script>
+    <script src="/vendor/codemirror/codemirror.min.js"></script>
+    <script src="/vendor/codemirror/mode/xml/xml.js"></script>
+    <script src="/vendor/codemirror/mode/css/css.js"></script>
+    <script src="/vendor/codemirror/mode/javascript/javascript.js"></script>
+    <script src="/vendor/codemirror/mode/htmlmixed/htmlmixed.js"></script>
+    <script src="/vendor/codemirror/mode/clike/clike.js"></script>
     <!-- Crucial for PHP! -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/php/php.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/dialog/dialog.min.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/dialog/dialog.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/search/searchcursor.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/search/search.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/matchbrackets.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closebrackets.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/selection/active-line.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/comment/comment.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/markdown/markdown.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/sql/sql.js"></script>
+    <script src="/vendor/codemirror/mode/php/php.js"></script>
+    <link rel="stylesheet" href="/vendor/codemirror/addon/dialog/dialog.min.css" />
+    <script src="/vendor/codemirror/addon/dialog/dialog.js"></script>
+    <script src="/vendor/codemirror/addon/search/searchcursor.js"></script>
+    <script src="/vendor/codemirror/addon/search/search.js"></script>
+    <script src="/vendor/codemirror/addon/edit/matchbrackets.js"></script>
+    <script src="/vendor/codemirror/addon/edit/closebrackets.js"></script>
+    <script src="/vendor/codemirror/addon/selection/active-line.js"></script>
+    <script src="/vendor/codemirror/addon/comment/comment.js"></script>
+    <script src="/vendor/codemirror/mode/python/python.js"></script>
+    <script src="/vendor/codemirror/mode/markdown/markdown.js"></script>
+    <script src="/vendor/codemirror/mode/sql/sql.js"></script>
   </head>
   <body>
     <div class="app">
       <header class="topbar">
-        <div class="topbar-logo">
-          <i class="ti ti-heart"></i> Copilot ni agwen
-        </div>
+        <span class="topbar-logo"><i class="ti ti-code" aria-hidden="true"></i> Draftdrion</span>
+        <span id="projectName" class="project-name">No project</span>
+        <button class="command-search" onclick="openQuickFile()" aria-label="Search project files"><i class="ti ti-search" aria-hidden="true"></i><span>Search files</span><kbd>Ctrl P</kbd></button>
         <div class="topbar-sep"></div>
-        <button class="btn-sm" id="toggleSidebarBtn" onclick="toggleSidebar()" aria-label="Toggle Explorer" aria-controls="projectSidebar" aria-expanded="true"><i class="ti ti-layout-sidebar" aria-hidden="true"></i> Explorer</button>
-        <button class="btn-sm" onclick="openQuickFile()" title="Quick Open (Ctrl+P)"><i class="ti ti-search" aria-hidden="true"></i> Quick Open</button>
-        <button class="btn-sm" id="toggleChatBtn" onclick="toggleChat()" aria-label="Toggle AI chat" aria-controls="aiChatPanel" aria-expanded="true"><i class="ti ti-layout-sidebar-right" aria-hidden="true"></i> Chat</button>
-        <button
-          class="btn-sm"
-          id="undoApplyBtn"
-          onclick="undoLastApply()"
-          style="display: none"
-        >
-          <i class="ti ti-arrow-back-up"></i> Undo Apply
-        </button>
-        <button class="btn-sm btn-danger" onclick="clearHistory()">
-          <i class="ti ti-trash"></i> Clear History
-        </button>
-        <button class="btn-sm" onclick="openSettings()">
-          <i class="ti ti-settings"></i> Settings
-        </button>
+        <button class="icon-button" id="focusModeBtn" onclick="Codebench.toggleFocus()" title="Focus mode (Ctrl+Shift+F)" aria-label="Toggle focus mode" aria-pressed="false"><i class="ti ti-focus-2" aria-hidden="true"></i></button>
+        <button class="icon-button" id="fullscreenBtn" onclick="Codebench.toggleFullscreen()" title="Browser fullscreen" aria-label="Toggle browser fullscreen" aria-pressed="false"><i class="ti ti-maximize" aria-hidden="true"></i></button>
+        <details class="command-menu" id="commandMenu"><summary class="icon-button" aria-label="More commands" title="More commands"><i class="ti ti-dots" aria-hidden="true"></i></summary><div class="menu-items">
+          <button onclick="saveCurrentFile()">Save file <kbd>Ctrl S</kbd></button>
+          <button onclick="editorCommand('findPersistent')">Find <kbd>Ctrl F</kbd></button>
+          <button onclick="editorCommand('replace')">Replace <kbd>Ctrl H</kbd></button>
+          <button onclick="goToLine()">Go to line <kbd>Ctrl G</kbd></button>
+          <button id="wrapBtn" onclick="toggleEditorWrap()" aria-pressed="false">Toggle word wrap</button>
+          <button id="undoApplyBtn" onclick="undoLastApply()" style="display:none">Undo last applied file</button>
+          <button onclick="clearHistory()">Clear conversation</button>
+        </div></details>
       </header>
+      <nav class="activity-rail" aria-label="Workspace navigation">
+        <button class="rail-button" id="toggleSidebarBtn" onclick="toggleSidebar()" aria-label="Toggle Explorer" aria-controls="projectSidebar" aria-expanded="true" title="Explorer (Ctrl+B)"><i class="ti ti-files" aria-hidden="true"></i></button>
+        <button class="rail-button" onclick="Codebench.openReview()" aria-label="Review AI changes" title="Review AI changes"><i class="ti ti-git-compare" aria-hidden="true"></i><span id="railReviewCount" class="rail-count" hidden></span></button>
+        <button class="rail-button" onclick="Codebench.showView('activity')" aria-label="AI activity" title="AI activity"><i class="ti ti-activity" aria-hidden="true"></i></button>
+        <button class="rail-button" id="toggleChatBtn" onclick="toggleChat()" aria-label="Toggle AI chat" aria-controls="aiChatPanel" aria-expanded="true" title="AI chat (Ctrl+Alt+B)"><i class="ti ti-message" aria-hidden="true"></i></button>
+        <div class="rail-spacer"></div>
+        <button class="rail-button" id="soundToggleBtn" onclick="Codebench.toggleMute()" aria-label="Mute feedback sounds" aria-pressed="false" title="Mute feedback sounds"><i class="ti ti-volume" aria-hidden="true"></i></button>
+        <button class="rail-button" onclick="openSettings()" aria-label="Settings" title="Settings"><i class="ti ti-settings" aria-hidden="true"></i></button>
+      </nav>
 
       <aside class="sidebar" id="projectSidebar">
         <div class="sidebar-title"><span>Explorer</span><button class="panel-close" onclick="toggleSidebar()" aria-label="Hide Explorer"><i class="ti ti-x" aria-hidden="true"></i></button></div>
@@ -1042,12 +1035,20 @@
         <button class="btn-sm folder-browse-button" id="browseFolderBtn" onclick="openFolderBrowser()">
           <i class="ti ti-folder" aria-hidden="true"></i> Browse Folder
         </button>
-        <div class="sidebar-label">Files</div>
-        <div class="file-tree" id="fileTree">
+        <div class="explorer-toolbar" aria-label="File management">
+          <button class="panel-close" onclick="Explorer.openAction('create-file')" title="New file" aria-label="New file"><i class="ti ti-file-plus" aria-hidden="true"></i></button>
+          <button class="panel-close" onclick="Explorer.openAction('create-folder')" title="New folder" aria-label="New folder"><i class="ti ti-folder-plus" aria-hidden="true"></i></button>
+          <button class="panel-close" id="undoFileActionBtn" onclick="Explorer.undo()" title="Undo file action" aria-label="Undo file action" disabled><i class="ti ti-arrow-back-up" aria-hidden="true"></i></button>
+          <button class="panel-close" onclick="Explorer.selectRoot()" title="Select project root" aria-label="Select project root"><i class="ti ti-home" aria-hidden="true"></i></button>
+          <label title="Show hidden files"><input type="checkbox" id="showHiddenFiles" onchange="Explorer.toggleHidden(this.checked)" /> Hidden</label>
+        </div>
+        <div class="explorer-location" id="explorerLocation">Project root</div>
+        <div class="file-tree" id="fileTree" role="tree" tabindex="0" aria-label="Project files">
           <div style="padding: 8px; color: var(--text3); font-size: 12px">
             Enter a project path above
           </div>
         </div>
+        <details class="file-action-history"><summary>File action history</summary><div id="fileActionHistory">No file actions yet.</div></details>
         <div class="sidebar-label">Context Files</div>
         <div class="open-files-list" id="contextList"></div>
       </aside>
@@ -1057,15 +1058,24 @@
         <div class="editor-chat-split" id="editorChatSplit">
           <div class="editor-pane">
             <div class="editor-tabs" id="editorTabs"></div>
-            <div class="editor-toolbar">
-              <button class="btn-sm" onclick="editorCommand('findPersistent')" title="Find (Ctrl+F)">Find</button>
-              <button class="btn-sm" onclick="editorCommand('replace')" title="Replace (Ctrl+H)">Replace</button>
-              <button class="btn-sm" onclick="goToLine()" title="Go to line (Ctrl+G)">Go to Line</button>
-              <span class="toolbar-spacer"></span>
-              <button class="btn-sm" id="wrapBtn" onclick="toggleEditorWrap()" aria-pressed="false">Wrap</button>
-              <button class="btn-sm" onclick="changeEditorFont(-1)" aria-label="Decrease editor font size">A−</button>
-              <button class="btn-sm" onclick="changeEditorFont(1)" aria-label="Increase editor font size">A+</button>
+            <div class="workspace-toolbar" role="tablist" aria-label="Main workspace">
+              <button role="tab" id="viewCodeBtn" aria-controls="editorBody" aria-selected="true" onclick="Codebench.showView('code')">Code</button>
+              <button role="tab" id="viewReviewBtn" aria-controls="reviewView" aria-selected="false" onclick="Codebench.openReview()">Changes <span id="reviewCount">0</span></button>
+              <button role="tab" id="viewActivityBtn" aria-controls="activityView" aria-selected="false" onclick="Codebench.showView('activity')">AI activity</button>
+              <span class="workspace-run-state" id="mainRunState" role="status">Ready</span>
             </div>
+            <section id="reviewView" class="workspace-view" aria-labelledby="viewReviewBtn" hidden>
+              <div class="review-toolbar"><label for="diffLayout">View</label><select id="diffLayout" onchange="Codebench.setDiffLayout(this.value)"><option value="inline">Inline</option><option value="split">Side by side</option></select><span class="toolbar-spacer"></span><button class="btn-sm" onclick="Codebench.reloadOriginal()">Reload original</button><button class="btn-sm" onclick="undoLastApply()">Undo last apply</button><button class="btn-sm btn-primary" id="applySelectedBtn" onclick="Codebench.applySelected()" disabled>Apply selected</button></div>
+              <p id="reviewStatus" class="view-notice" role="status">Proposed edits appear here. Files stay unchanged until you apply them.</p>
+              <div class="review-layout"><div id="reviewFiles" class="review-files" aria-label="Proposed files"></div><div id="reviewDiff" class="review-diff"><div class="view-empty">No proposed changes yet.</div></div></div>
+            </section>
+            <section id="activityView" class="workspace-view" aria-labelledby="viewActivityBtn" hidden>
+              <div class="activity-heading"><h2>AI activity</h2><button class="btn-sm stop-run" onclick="Codebench.stopRun()" hidden>Stop response</button></div>
+              <p id="activityStatus" class="view-notice" role="status">Send a message to begin.</p>
+              <ol id="activityEvents" class="activity-events"></ol>
+              <pre id="liveResponse" class="live-response" hidden></pre>
+              <p class="activity-footnote">Shows request and tool events. No terminal commands run here.</p>
+            </section>
             <div class="editor-body" id="editorBody">
               <div class="empty-editor">
                 <i class="ti ti-file-code"></i>
@@ -1099,7 +1109,9 @@
           <div class="resizer panel-divider" id="resizer" role="separator" tabindex="0" aria-label="Resize AI chat" aria-orientation="vertical" aria-valuemin="220" aria-valuemax="1000" aria-valuenow="420"></div>
           <div class="chat-pane" id="aiChatPanel">
             <div class="chat-header">
-              <i class="ti ti-robot" aria-hidden="true"></i> AI chat
+              <span class="chat-title">Assistant</span>
+              <select id="quickProviderInput" aria-label="AI provider" onchange="quickSelectProvider(this.value)"><option value="openui">OpenUI Gateway</option><option value="deepseek">DeepSeek</option><option value="openai">OpenAI</option><option value="anthropic">Claude</option><option value="gemini">Gemini</option><option value="custom">Custom</option></select>
+              <button class="panel-close" onclick="openSettings('ai')" aria-label="AI Settings" title="AI Settings"><i class="ti ti-adjustments" aria-hidden="true"></i></button>
               <button class="panel-close" onclick="toggleChat()" aria-label="Hide AI chat"><i class="ti ti-x" aria-hidden="true"></i></button>
               <span
                 class="context-badge"
@@ -1108,8 +1120,7 @@
               ></span>
             </div>
 
-            <!-- History control bar -->
-            <div class="history-bar">
+            <details class="conversation-options"><summary>Conversation context <span id="chatContextStatus"></span></summary><div class="history-bar">
               <i class="ti ti-history" style="font-size: 14px"></i>
               <select id="histMode" onchange="onHistModeChange()" aria-label="Chat history context">
                 <option value="full">Full history</option>
@@ -1132,7 +1143,9 @@
               <span class="hist-token-est" id="histTokenEst"></span>
             </div>
 
-            <div class="chat-messages" id="chatMessages">
+            </details>
+            <div class="chat-process" id="chatProcess" role="status" hidden><span class="run-pulse" aria-hidden="true"></span><span id="chatRunState">Working…</span><button class="panel-close" onclick="Codebench.stopRun()" aria-label="Stop response">Stop</button></div>
+            <div class="chat-messages" id="chatMessages" tabindex="0" role="region" aria-label="Conversation">
               <div class="empty-chat">
                 <i class="ti ti-message-dots"></i>
                 <h3>Ask AI about your code</h3>
@@ -1140,42 +1153,47 @@
                   Open files and send them to chat context, then ask anything.
                 </p>
                 <div class="tips">
-                  <div class="tip" onclick="sendSuggestion(this)">
+                  <button class="tip" type="button" onclick="sendSuggestion(this)">
                     Explain this file's purpose
-                  </div>
-                  <div class="tip" onclick="sendSuggestion(this)">
+                  </button>
+                  <button class="tip" type="button" onclick="sendSuggestion(this)">
                     Find bugs in this code
-                  </div>
-                  <div class="tip" onclick="sendSuggestion(this)">
+                  </button>
+                  <button class="tip" type="button" onclick="sendSuggestion(this)">
                     Refactor this file to be cleaner
-                  </div>
-                  <div class="tip" onclick="sendSuggestion(this)">
+                  </button>
+                  <button class="tip" type="button" onclick="sendSuggestion(this)">
                     Add error handling to this code
-                  </div>
+                  </button>
                 </div>
               </div>
             </div>
 
+            <div class="chat-latest"><button type="button" class="btn-sm" id="jumpToLatest" hidden>Jump to latest <span aria-hidden="true">↓</span></button></div>
             <div class="chat-input-area">
+              <div class="composer-meta"><span id="composerModel"></span><button class="panel-close" onclick="openSettings('ai')" id="memoryIndicator" title="Configure Obsidian Memory">Memory off</button></div>
               <div class="context-chips" id="contextChips"></div>
               <div class="chat-input-row">
                 <textarea
                   class="chat-input"
                   id="chatInput"
-                  placeholder="Ask about your code... (Shift+Enter for newline)"
+                  aria-label="Ask AI about your project"
+                  placeholder="Ask about your project…"
                   rows="1"
                 ></textarea>
                 <button class="send-btn" id="sendBtn" onclick="sendMessage()" aria-label="Send message">
                   <i class="ti ti-send"></i>
                 </button>
               </div>
+              <div class="composer-footer"><span>Enter to send · Shift Enter for a new line</span><button class="panel-close" id="retryBtn" onclick="Codebench.retry()" hidden>Retry</button></div>
             </div>
           </div>
         </div>
       </main>
       <footer class="workbench-status">
         <span id="aiRunStatus" role="status" aria-live="polite">Ready</span>
-        <button class="panel-close" id="aiModelLabel" onclick="openSettings()" title="Change AI provider or model"></button>
+        <button class="panel-close" id="aiModelLabel" onclick="openSettings('ai')" title="Change AI provider or model"></button>
+        <span id="localSaveStatus" role="status">Loading laptop data…</span>
         <span id="editorStatus">No file open</span>
       </footer>
     </div>
@@ -1208,45 +1226,97 @@
 
     <div class="modal-overlay hidden" id="settingsModal">
       <div class="modal settings-modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-        <h2 id="settingsTitle">AI Settings</h2>
+        <div class="settings-header"><h2 id="settingsTitle">Settings</h2><button class="panel-close" onclick="closeSettings()" aria-label="Close Settings"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+        <div class="settings-layout"><nav class="settings-nav" aria-label="Settings categories">
+          <button type="button" data-settings-tab="workspace" onclick="Codebench.settingsTab('workspace')">Workspace</button>
+          <button type="button" data-settings-tab="editor" onclick="Codebench.settingsTab('editor')">Editor &amp; review</button>
+          <button type="button" data-settings-tab="ai" onclick="Codebench.settingsTab('ai')">AI &amp; context</button>
+          <button type="button" data-settings-tab="feedback" onclick="Codebench.settingsTab('feedback')">Feedback</button>
+        </nav><div class="settings-content">
+          <section data-settings-panel="workspace" hidden><h3>Workspace</h3><p class="settings-help">Adjust panel sizes. Drag their dividers for quick changes.</p><label for="sidebarWidthInput">Explorer width (px)</label><input type="number" id="sidebarWidthInput" min="160" max="600" /><label for="chatWidthInput">Assistant width (px)</label><input type="number" id="chatWidthInput" min="220" max="1000" /><p class="settings-help">Ctrl+B: Explorer · Ctrl+Alt+B: Assistant · Ctrl+Shift+F: focus mode. The fullscreen button hides the browser chrome.</p><button class="btn-sm" onclick="Codebench.resetLayoutDraft()">Reset panel sizes</button></section>
+          <section data-settings-panel="editor" hidden><h3>Editor &amp; review</h3><label for="editorFontInput">Code font size (px)</label><input type="number" id="editorFontInput" min="10" max="24" /><label class="memory-option"><input type="checkbox" id="editorWrapInput" /> Wrap long lines</label><label for="defaultDiffInput">Change review layout</label><select id="defaultDiffInput"><option value="inline">Inline</option><option value="split">Side by side</option></select><p class="settings-help">Both views are read only. Select files to apply; The last ten file applies are saved for Undo. Unsaved edits and changed files are protected.</p></section>
+          <section data-settings-panel="ai"><h3>AI &amp; context</h3>
+        <p class="settings-help">Choose the service and model for your coding assistant.</p>
+        <label class="memory-option"><input type="checkbox" id="autoFollowInput" /> Follow the latest response</label><p class="settings-help">Follow new text as it arrives. Scrolling up pauses following; Jump to latest resumes it. Saved on this laptop.</p>
         <div><label for="providerInput">Provider</label><select id="providerInput" onchange="selectProviderDraft()">
-          <option value="deepseek">DeepSeek</option><option value="openai">OpenAI</option><option value="anthropic">Claude (Anthropic)</option><option value="gemini">Gemini (Google)</option><option value="custom">Custom / OpenAI-compatible</option>
+          <option value="deepseek">DeepSeek</option><option value="openai">OpenAI</option><option value="anthropic">Claude (Anthropic)</option><option value="gemini">Gemini (Google)</option><option value="openui">OpenUI Gateway</option><option value="custom">Custom / OpenAI-compatible</option>
         </select></div>
-        <div><label for="apiKeyInput" id="apiKeyLabel">API key</label><input type="password" id="apiKeyInput" placeholder="Provider API key" autocomplete="off" /></div>
+        <p id="providerHelp" class="settings-help"></p>
+        <div><label for="apiKeyInput" id="apiKeyLabel">API key</label><input type="password" id="apiKeyInput" placeholder="Provider API key" autocomplete="off" aria-describedby="credentialStatus" /><p id="credentialStatus" class="settings-help" role="status" aria-live="polite"></p></div>
         <div id="customEndpointField" hidden><label for="apiBaseUrl">API base URL</label><input type="text" id="apiBaseUrl" placeholder="https://example.com/v1" /></div>
-        <div><label for="modelInput">Model ID</label><div class="settings-row"><input type="text" id="modelInput" list="modelOptions" placeholder="Load models or enter a model ID" autocomplete="off" /><button class="btn-sm" id="loadModelsBtn" onclick="loadProviderModels()">Load models</button></div><datalist id="modelOptions"></datalist></div>
+        <div><label for="modelSelect">Model</label><div class="settings-row"><select id="modelSelect" onchange="selectModel()" aria-describedby="modelCostHelp"></select><button class="btn-sm" id="loadModelsBtn" onclick="loadProviderModels()">Refresh models</button></div></div>
+        <p id="modelCostHelp" class="settings-help"></p>
+        <div id="obsidianMemoryField" hidden>
+          <label for="obsidianModeInput">Obsidian Memory access</label>
+          <select id="obsidianModeInput" onchange="updateObsidianModeHelp()"><option value="off">Off</option><option value="read-only">Read only</option><option value="read-write">Read &amp; write</option></select>
+          <p class="settings-help" id="obsidianModeHelp"></p>
+          <p class="settings-help">Saved per provider on this laptop. Changes apply to new messages; Stop cancels the current reply but cannot undo a note write that already completed.</p>
+          <button class="btn-sm" id="testObsidianBtn" onclick="testObsidianConnection()">Test connection</button>
+          <p id="obsidianStatus" class="settings-help" role="status" aria-live="polite"></p>
+          <details class="settings-help"><summary>Recent note changes · this laptop</summary><button class="btn-sm" onclick="loadObsidianChanges()">Refresh history</button><div id="obsidianChanges"></div></details>
+        </div>
         <div id="modelLoadStatus" class="settings-help" role="status" aria-live="polite"></div>
-        <div><label for="maxTokensInput">Maximum output tokens</label><input type="number" id="maxTokensInput" min="512" max="65536" step="512" value="8192" /></div>
-        <p class="settings-help">Chat and attached code are sent to the selected provider. Each provider uses its own API key and billing. Saved keys stay in this browser.</p>
-        <div><label for="backendUrl">Local backend URL</label><input type="text" id="backendUrl" /></div>
+        <details id="settingsAdvanced" class="settings-advanced"><summary>Advanced settings</summary>
+          <div><label for="modelInput">Manual model ID</label><input type="text" id="modelInput" placeholder="Enter a model ID" autocomplete="off" oninput="syncModelSelection()" /></div>
+          <div><label for="maxTokensInput">Maximum output tokens</label><input type="number" id="maxTokensInput" min="512" max="65536" step="512" value="8192" /></div>
+          <div><label for="backendUrl">Local backend URL</label><input type="text" id="backendUrl" /></div>
+        </details>
+        <p class="settings-help">Chat and attached files go to the selected service. Saved credentials stay in server-side files on this laptop.</p>
         <div id="deepseekBalanceField"><label>DeepSeek Balance</label><div class="settings-row"><button class="btn-sm" onclick="checkBalance()">Check Balance</button><span id="balanceResult" class="settings-help"></span></div></div>
-        <div class="modal-actions"><button class="btn-sm" onclick="closeSettings()">Cancel</button><button class="btn-sm btn-primary" onclick="saveSettings()">Save</button></div>
+          </section>
+          <section data-settings-panel="feedback" hidden><h3>Feedback</h3><label for="soundModeInput">Feedback sounds</label><select id="soundModeInput"><option value="all">Completion and errors</option><option value="error">Errors only</option><option value="off">Off</option></select><label for="soundVolumeInput">Volume</label><input type="range" id="soundVolumeInput" min="0" max="100" /><button class="btn-sm" onclick="Codebench.previewSound()">Preview sound</button><label class="memory-option"><input type="checkbox" id="reducedMotionInput" /> Reduce motion</label><p class="settings-help">No startup or per-character sounds. Your system’s reduced-motion preference is also respected. The rail’s volume button mutes feedback immediately.</p></section>
+        </div></div>
+        <div class="modal-actions"><button class="btn-sm" onclick="closeSettings()">Cancel</button><button class="btn-sm btn-primary" onclick="saveSettings()">Save settings</button></div>
       </div>
     </div>
 
+    <div id="workbenchNotice" class="workbench-notice" role="status" hidden></div>
+    <div id="fileContextMenu" class="file-context-menu" role="menu" aria-label="File actions" hidden>
+      <button role="menuitem" onclick="Explorer.openAction('create-file')">New file</button>
+      <button role="menuitem" onclick="Explorer.openAction('create-folder')">New folder</button>
+      <button role="menuitem" data-needs-selection onclick="Explorer.openAction('rename')">Rename / move <kbd>F2</kbd></button>
+      <button role="menuitem" data-needs-selection onclick="Explorer.openAction('delete')">Delete <kbd>Del</kbd></button>
+      <button role="menuitem" onclick="Explorer.copyPath()">Copy path</button>
+      <button role="menuitem" id="fileMenuUndo" onclick="Explorer.undo()">Undo file action</button>
+    </div>
+    <div class="modal-overlay hidden" id="fileActionModal">
+      <form class="modal file-action-modal" id="fileActionForm" role="dialog" aria-modal="true" aria-labelledby="fileActionTitle">
+        <div class="settings-header"><h2 id="fileActionTitle">New file</h2><button class="panel-close" type="button" onclick="Explorer.closeAction()" aria-label="Close file action"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+        <div class="file-action-body"><div id="fileActionField"><label id="fileActionNameLabel" for="fileActionName">File name, including extension</label><input id="fileActionName" type="text" autocomplete="off" spellcheck="false" aria-describedby="fileActionHelp fileActionError" /></div><p id="fileActionHelp"></p><p id="fileActionError" role="alert"></p></div>
+        <div class="modal-actions"><button class="btn-sm" type="button" id="fileActionCancel" onclick="Explorer.closeAction()">Cancel</button><button class="btn-sm btn-primary" type="submit" id="fileActionSubmit">Create</button></div>
+      </form>
+    </div>
     <script>
       // ── State ─────────────────────────────────────────────────────
+      let recoveredDrafts = {};
+      let explorerTree=[];
+      try { recoveredDrafts = JSON.parse(LaptopStore.getItem('editorDrafts') || '{}'); } catch {}
       const state = {
-        apiKey: localStorage.getItem("dsApiKey") || "",
-        backendUrl: localStorage.getItem("backendUrl") || window.location.origin,
-        rootDir: localStorage.getItem("rootDir") || "",
-        openTabs: [],
-        activeTab: null,
-        contextFiles: JSON.parse(localStorage.getItem("contextFiles") || "[]"),
-        messages: JSON.parse(localStorage.getItem("chatHistory") || "[]"),
-        histMode: localStorage.getItem("histMode") || "full", // full | last | none
-        histRange: parseInt(localStorage.getItem("histRange") || "10"),
+        apiKey: LaptopStore.getItem("dsApiKey") || "",
+        backendUrl: LaptopStore.getItem("backendUrl") || window.location.origin,
+        rootDir: LaptopStore.getItem("rootDir") || "",
+        openTabs: recoveredDrafts.rootDir === LaptopStore.getItem('rootDir') && Array.isArray(recoveredDrafts.tabs) ? recoveredDrafts.tabs.filter(tab => tab && typeof tab.path === 'string' && typeof tab.content === 'string') : [],
+        activeTab: recoveredDrafts.rootDir === LaptopStore.getItem('rootDir') ? recoveredDrafts.activeTab : null,
+        contextFiles: JSON.parse(LaptopStore.getItem("contextFiles") || "[]"),
+        messages: JSON.parse(LaptopStore.getItem("chatHistory") || "[]"),
+        histMode: LaptopStore.getItem("histMode") || "full", // full | last | none
+        histRange: parseInt(LaptopStore.getItem("histRange") || "10"),
         loading: false,
       };
 
       function saveState() {
-        localStorage.setItem("chatHistory", JSON.stringify(state.messages));
-        localStorage.setItem(
+        LaptopStore.setItem("chatHistory", JSON.stringify(state.messages));
+        LaptopStore.setItem(
           "contextFiles",
           JSON.stringify(state.contextFiles),
         );
-        localStorage.setItem("histMode", state.histMode);
-        localStorage.setItem("histRange", state.histRange);
+        LaptopStore.setItem("histMode", state.histMode);
+        LaptopStore.setItem("histRange", state.histRange);
+        {
+          const tabs = state.openTabs.map(({path,content,savedContent,modified})=>({path,content,savedContent,modified}));
+          LaptopStore.setItem('editorDrafts',JSON.stringify({rootDir:state.rootDir,activeTab:state.activeTab,tabs,composer:document.getElementById('chatInput').value}));
+          if (typeof applyHistory !== 'undefined') LaptopStore.setItem('undoHistory',JSON.stringify({rootDir:state.rootDir,entries:applyHistory.slice(-10)}));
+        }
       }
 
       // ── Init ──────────────────────────────────────────────────────
@@ -1262,6 +1332,19 @@
         renderContextList();
         if (state.messages.length) renderMessages();
         updateTokenEst();
+        document.getElementById('chatInput').value=recoveredDrafts.rootDir===state.rootDir ? recoveredDrafts.composer || '' : '';
+        document.getElementById('chatInput').addEventListener('input',saveState);
+        setTimeout(async()=>{
+          for (const tab of state.openTabs) {
+            try {
+              const disk=(await api('/api/files/read',{rootDir:state.rootDir,filePath:tab.path})).content;
+              if (!tab.modified) { tab.content=disk;tab.savedContent=disk; }
+              else if (disk!==tab.savedContent && typeof Codebench!=='undefined') Codebench.notify('A file changed on disk. Your editor draft was preserved; saving it will require resolving the conflict.',true);
+            } catch { tab.modified=true; }
+          }
+          if (!state.openTabs.some(tab=>tab.path===state.activeTab))state.activeTab=state.openTabs[0]?.path || null;
+          renderTabs();renderEditor();updateUndoBtn();
+        },0);
       })();
 
       // ── History control ───────────────────────────────────────────
@@ -1313,38 +1396,23 @@
       }
 
       function clearHistory() {
+        if(state.loading||(typeof Codebench!=='undefined'&&Codebench.isApplying())){Codebench.notify('Wait for the current request or Apply to finish.');return;}
         if (!confirm("Clear all chat history?")) return;
         state.messages = [];
+        Codebench.resetReview();
         saveState();
         const container = document.getElementById("chatMessages");
         container.innerHTML = `<div class="empty-chat">
     <i class="ti ti-message-dots"></i><h3>Ask AI about your code</h3>
     <p>Open files and send them to chat context, then ask anything.</p>
     <div class="tips">
-      <div class="tip" onclick="sendSuggestion(this)">Explain this file's purpose</div>
-      <div class="tip" onclick="sendSuggestion(this)">Find bugs in this code</div>
-      <div class="tip" onclick="sendSuggestion(this)">Refactor this file to be cleaner</div>
-      <div class="tip" onclick="sendSuggestion(this)">Add error handling to this code</div>
+      <button class="tip" type="button" onclick="sendSuggestion(this)">Explain this file's purpose</button>
+      <button class="tip" type="button" onclick="sendSuggestion(this)">Find bugs in this code</button>
+      <button class="tip" type="button" onclick="sendSuggestion(this)">Refactor this file to be cleaner</button>
+      <button class="tip" type="button" onclick="sendSuggestion(this)">Add error handling to this code</button>
     </div>
   </div>`;
         updateTokenEst();
-      }
-
-      // ── Settings ──────────────────────────────────────────────────
-      function openSettings() {
-        document.getElementById("apiKeyInput").value = state.apiKey;
-        document.getElementById("backendUrl").value = state.backendUrl;
-        document.getElementById("settingsModal").classList.remove("hidden");
-      }
-      function closeSettings() {
-        document.getElementById("settingsModal").classList.add("hidden");
-      }
-      function saveSettings() {
-        state.apiKey = document.getElementById("apiKeyInput").value.trim();
-        state.backendUrl = document.getElementById("backendUrl").value.trim();
-        localStorage.setItem("dsApiKey", state.apiKey);
-        localStorage.setItem("backendUrl", state.backendUrl);
-        closeSettings();
       }
 
       // ── File Tree ─────────────────────────────────────────────────
@@ -1362,23 +1430,28 @@
           return false;
         }
         const switching = state.rootDir && projectSessionKey(requestedRoot) !== projectSessionKey(state.rootDir);
+        if(switching&&typeof Explorer!=='undefined'&&Explorer.isBusy()){input.value=state.rootDir;alert('Wait for the file action to finish.');return false;}
+        if (switching && typeof Codebench !== 'undefined' && Codebench.isApplying()) { input.value=state.rootDir;alert('Wait for the selected files to finish applying.');return false; }
         if (switching && state.openTabs.some(tab => tab.modified)) {
           input.value = state.rootDir;
           alert("Save or close modified files before changing projects.");
           return false;
         }
         try {
-          const res = await api("/api/files/list", { rootDir: requestedRoot });
+          const res = await api("/api/files/list", { rootDir: requestedRoot, showHidden:typeof Explorer!=='undefined'&&Explorer.showHidden(requestedRoot) });
           const rootDir = res.rootDir || requestedRoot;
           if (state.rootDir && projectSessionKey(rootDir) !== projectSessionKey(state.rootDir)) {
-            localStorage.setItem(projectSessionKey(state.rootDir), JSON.stringify({ messages: state.messages, contextFiles: state.contextFiles }));
+            LaptopStore.setItem(projectSessionKey(state.rootDir), JSON.stringify({ messages: state.messages, contextFiles: state.contextFiles, tabs:state.openTabs.map(({path,content,savedContent,modified})=>({path,content,savedContent,modified})),activeTab:state.activeTab,undo:applyHistory.slice(-10),composer:document.getElementById('chatInput').value }));
             let session = {};
-            try { session = JSON.parse(localStorage.getItem(projectSessionKey(rootDir)) || "{}"); } catch {}
+            try { session = JSON.parse(LaptopStore.getItem(projectSessionKey(rootDir)) || "{}"); } catch {}
             state.messages = Array.isArray(session.messages) ? session.messages : [];
             state.contextFiles = Array.isArray(session.contextFiles) ? session.contextFiles : [];
-            state.openTabs = [];
-            state.activeTab = null;
+            state.openTabs = Array.isArray(session.tabs) ? session.tabs : [];
+            state.activeTab = session.activeTab || null;
+            document.getElementById('chatInput').value=session.composer || '';
             applyHistory.length = 0;
+            if (Array.isArray(session.undo)) applyHistory.push(...session.undo.slice(-10));
+            state.rootDir = rootDir;
             saveState();
             renderTabs();
             renderEditor();
@@ -1390,7 +1463,9 @@
           }
           state.rootDir = rootDir;
           input.value = rootDir;
-          localStorage.setItem("rootDir", rootDir);
+          LaptopStore.setItem("rootDir", rootDir);
+          if (switching && typeof Codebench !== 'undefined') Codebench.resetReview();
+          if (typeof Codebench !== 'undefined') Codebench.refreshReviewCount();
           renderTree(res.tree, document.getElementById("fileTree"));
           if (res.truncated) {
             const note = document.createElement("div");
@@ -1406,44 +1481,9 @@
         }
       }
 
-      function renderTree(nodes, container, depth = 0) {
-        container.innerHTML = "";
-        nodes.forEach((node) => {
-          if (node.type === "dir") {
-            const wrap = document.createElement("div");
-            const item = document.createElement("div");
-            item.className = "tree-item dir";
-            item.style.paddingLeft = 8 + depth * 8 + "px";
-            item.innerHTML = `<i class="ti ti-chevron-right" style="font-size:12px;color:var(--text3)"></i><i class="ti ti-folder" style="color:var(--yellow)"></i><span class="tree-item-name">${escHtml(node.name)}</span>`;
-            const children = document.createElement("div");
-            children.className = "tree-children";
-            children.style.display = "none";
-            renderTree(node.children || [], children, depth + 1);
-            item.onclick = () => {
-              const open = children.style.display !== "none";
-              children.style.display = open ? "none" : "block";
-              item.querySelector("i:first-child").className = open
-                ? "ti ti-chevron-right"
-                : "ti ti-chevron-down";
-              item.querySelector("i:nth-child(2)").className = open
-                ? "ti ti-folder"
-                : "ti ti-folder-open";
-              item.querySelector("i:first-child").style.cssText =
-                "font-size:12px;color:var(--text3)";
-            };
-            wrap.appendChild(item);
-            wrap.appendChild(children);
-            container.appendChild(wrap);
-          } else {
-            const item = document.createElement("div");
-            item.className = "tree-item";
-            item.style.paddingLeft = 8 + depth * 8 + "px";
-            const icon = getFileIcon(node.name);
-            item.innerHTML = `<i class="ti ${icon.cls}" style="color:${icon.color}"></i><span class="tree-item-name">${escHtml(node.name)}</span>`;
-            item.onclick = () => openFile(node.path);
-            container.appendChild(item);
-          }
-        });
+      function renderTree(nodes, container) {
+        explorerTree=nodes;
+        if(typeof Explorer!=='undefined')Explorer.render(nodes);
       }
 
       function getFileIcon(name) {
@@ -1489,6 +1529,7 @@
       }
 
       function activateTab(filePath) {
+        if (typeof Codebench !== 'undefined') Codebench.showView('code');
         state.activeTab = filePath;
         renderTabs();
         renderEditor();
@@ -1510,6 +1551,7 @@
       }
 
       function renderTabs() {
+        saveState();
         const container = document.getElementById("editorTabs");
         container.innerHTML = "";
         state.openTabs.forEach((tab) => {
@@ -1615,6 +1657,7 @@
             rootDir: state.rootDir,
             filePath: tab.path,
             content: tab.content,
+            expectedContent:tab.savedContent,
           });
           tab.savedContent = tab.content;
           tab.modified = false;
@@ -1644,6 +1687,7 @@
         renderContextList();
       }
       function renderContextChips() {
+        if (typeof updateAiStatus === 'function') updateAiStatus();
         const chips = document.getElementById("contextChips");
         const badge = document.getElementById("contextBadge");
         chips.innerHTML = "";
@@ -1690,6 +1734,7 @@
       // ── Chat ──────────────────────────────────────────────────────
       function sendSuggestion(el) {
         document.getElementById("chatInput").value = el.textContent;
+        saveState();
         sendMessage();
       }
 
@@ -1705,15 +1750,20 @@
         const input = document.getElementById("chatInput");
         const text = input.value.trim();
         if (!text) return;
-        if (!state.model || (!state.apiKey && !state.serverKeys?.[state.provider] && state.provider !== "custom")) { openSettings(); return; }
-        const runConfig = { provider:state.provider, model:state.model, baseUrl:state.baseUrl, maxTokens:state.maxTokens, apiKey:state.apiKey };
+        if (!state.model) { openSettings('ai'); return; }
+        const runConfig = { provider:state.provider, model:state.model, baseUrl:state.baseUrl, maxTokens:state.maxTokens, apiKey:state.apiKey, obsidianMode:state.obsidianMode };
         state.loading = true;
         document.getElementById("sendBtn").disabled = true;
         updateAiStatus();
         input.value = "";
         state.messages.push({ role:"user", content:text });
         saveState(); renderMessages(); showTyping(); updateTokenEst();
+        const signal=Codebench.startRun(text,runConfig);
+        let failed=false,stopped=false;
         try {
+          await LaptopStore.ready;
+          await refreshServerKeys();
+          if(!state.apiKey&&!state.serverKeys?.[runConfig.provider]&&runConfig.provider!=='custom')throw new Error('Configure this provider’s key in AI & context settings, then retry.');
           const openFiles = [];
           for (const path of state.contextFiles) {
             const tab = state.openTabs.find(tab => tab.path === path);
@@ -1723,22 +1773,27 @@
               openFiles.push({ path, content:result.content });
             }
           }
-          const res = await api("/api/chat", {
+          const body = {
             messages:getMessagesToSend().filter(message => !message.error).map(({role,content}) => ({role,content})),
             rootDir:state.rootDir, openFiles,
             provider:runConfig.provider, model:runConfig.model, baseUrl:runConfig.baseUrl, maxTokens:runConfig.maxTokens,
-          }, { "x-api-key":runConfig.apiKey });
-          removeTyping();
-          state.messages.push({ ...res.message, incomplete:res.truncated });
-          saveState(); renderMessages(); updateTokenEst();
+            obsidianMode:runConfig.obsidianMode,
+            stream:true,
+          };
+          Codebench.progress({type:'status',text:'Sending request to '+runConfig.provider});
+          const response=await fetch(state.backendUrl+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':runConfig.apiKey},body:JSON.stringify(body),signal});
+          const res=await ChatTransport.readResponse(response,Codebench.progress);
+          state.messages.push({ ...res.message, incomplete:res.truncated, usage:res.usage });
+          saveState(); renderMessages(true); updateTokenEst();
         } catch (error) {
-          removeTyping();
-          state.messages.push({ role:"assistant", content:"Error: " + error.message, error:true });
-          saveState(); renderMessages();
+          failed=true;stopped=signal.aborted;
+          state.messages.push({ role:"assistant", content:stopped?'Response stopped. You can retry.':"Error: " + error.message, error:true });
+          saveState(); renderMessages(true);
         } finally {
           state.loading = false;
           document.getElementById("sendBtn").disabled = false;
           updateAiStatus();
+          Codebench.finishRun(failed,stopped);
         }
       }
 
@@ -1749,33 +1804,78 @@
         return 0;
       }
 
-      function renderMessages() {
+      function renderMessages(removeIndicator = false) {
         const container = document.getElementById("chatMessages");
+        const position = container.scrollTop;
+        if (typeof ChatScroll !== 'undefined') ChatScroll.capture();
+        if (removeIndicator) removeTyping();
         container.querySelector(".empty-chat")?.remove();
-        container
-          .querySelectorAll(".msg:not(.typing-msg)")
-          .forEach((m) => m.remove());
+        const existing = new Map([...container.querySelectorAll('.msg:not(.typing-msg)')].map(el => [Number(el.dataset.messageIndex), el]));
         const ctxStart = getContextStartIdx();
         state.messages.forEach((msg, idx) => {
-          const el = createMsgEl(msg, idx < ctxStart);
-          const typing = container.querySelector(".typing-msg");
-          if (typing) container.insertBefore(el, typing);
-          else container.appendChild(el);
+          const signature = JSON.stringify([msg, idx < ctxStart]);
+          let el = existing.get(idx);
+          if (el?.messageSignature !== signature) {
+            const next = createMsgEl(msg, idx < ctxStart);
+            next.messageSignature = signature;
+            if (el) el.replaceWith(next);
+            else container.insertBefore(next, container.querySelector('.typing-msg'));
+          }
+          existing.delete(idx);
         });
-        container.scrollTop = container.scrollHeight;
+        for (const el of existing.values()) el.remove();
+        if (typeof ChatScroll !== 'undefined') ChatScroll.restore();
+        else container.scrollTop = position;
+        if (typeof Codebench !== 'undefined') Codebench.refreshReviewCount();
       }
 
       function createMsgEl(msg, outOfContext = false) {
         const el = document.createElement("div");
         el.className = `msg ${msg.role}${outOfContext ? " msg-out-of-context" : ""}`;
-        const content = formatContent(msg.content);
-        el.innerHTML = `<div class="msg-avatar">${msg.role === "user" ? "U" : "AI"}</div><div class="msg-body"><div class="msg-role">${msg.role}</div><div class="msg-content">${content}</div></div>`;
+        el.dataset.messageIndex=state.messages.indexOf(msg);
+        el.innerHTML = `<div class="msg-avatar">${msg.role === "user" ? "U" : "AI"}</div><div class="msg-body"><div class="msg-role">${msg.role}</div><div class="msg-content"></div></div>`;
+        const target = el.querySelector(".msg-content");
+        const parts = typeof OpenUIChat === "undefined" ? [{ type:"text", content:msg.content }] : OpenUIChat.splitMessage(msg);
+        for (const part of parts) {
+          if (part.type === "ui") target.appendChild(OpenUIChat.createView(part.content));
+          else {
+            const text = document.createElement("div");
+            text.innerHTML = formatContent(part.content);
+            target.appendChild(text);
+          }
+        }
+        if (msg.role === 'assistant' && msg.memory) {
+          const memory = document.createElement('details');
+          memory.className = 'openui-source';
+          const summary = document.createElement('summary');
+          summary.textContent = msg.memory.status === 'unavailable' ? 'Obsidian Memory unavailable' : `Obsidian Memory · ${(msg.memory.sources || []).length} notes read${msg.memory.changes?.length ? ' · '+msg.memory.changes.length+' note changes' : ''}`;
+          memory.appendChild(summary);
+          if (msg.memory.warning) {
+            const warning = document.createElement('p');
+            warning.textContent = msg.memory.warning;
+            memory.appendChild(warning);
+            memory.open = true;
+          }
+          if (msg.memory.status === 'connected' && !msg.memory.project) {
+            const scope = document.createElement('p');
+            scope.textContent = 'Shared notes only. This project has no Obsidian mapping on the server.';
+            memory.appendChild(scope);
+          }
+          for (const path of msg.memory.sources || []) {
+            const source = document.createElement('div');
+            source.textContent = path;
+            memory.appendChild(source);
+          }
+          for(const change of msg.memory.changes || []){const item=document.createElement('div');item.textContent=`${change.status} · ${change.operation} · ${change.path}`;memory.appendChild(item);}
+          el.querySelector('.msg-body').appendChild(memory);
+        }
         el.querySelectorAll(".apply-btn:not(.applied)").forEach((btn) => {
           if (msg.incomplete) { btn.disabled = true; btn.textContent = "Incomplete response"; }
           else btn.onclick = () => applyCode(btn);
         });
         el.querySelectorAll(".diff-toggle").forEach((btn) => {
-          btn.onclick = () => toggleDiff(btn);
+          btn.disabled=Boolean(msg.incomplete);
+          btn.onclick = () => Codebench.openReview(Number(el.dataset.messageIndex));
         });
         el.querySelectorAll(".copy-btn").forEach((btn) => {
           btn.onclick = () => copyCode(btn);
@@ -1851,82 +1951,11 @@
         return result;
       }
 
-      function renderDiff(lines) {
-        if (!lines.length)
-          return '<div style="padding:8px 12px;color:var(--text3);font-size:12px">No changes</div>';
-
-        let addCount = 0,
-          delCount = 0;
-        // Collapse context: only show 3 lines around changes
-        const changed = new Set();
-        lines.forEach((l, i) => {
-          if (l.type !== "ctx")
-            for (let k = i - 3; k <= i + 3; k++) changed.add(k);
-        });
-
-        let html = "";
-        let lastShown = -2;
-        lines.forEach((l, i) => {
-          if (!changed.has(i)) return;
-          if (i > lastShown + 1)
-            html += `<div class="diff-hunk">@@ -${l.oldLine || "?"} +${l.newLine || "?"} @@</div>`;
-          lastShown = i;
-          if (l.type === "add") addCount++;
-          if (l.type === "del") delCount++;
-          const cls =
-            l.type === "add"
-              ? "diff-add"
-              : l.type === "del"
-                ? "diff-del"
-                : "diff-ctx";
-          const sign = l.type === "add" ? "+" : l.type === "del" ? "-" : " ";
-          const lineNum = l.type === "del" ? l.oldLine : l.newLine;
-          html += `<div class="diff-line ${cls}">
-      <span class="diff-line-num">${lineNum}</span>
-      <span class="diff-line-sign" style="padding:0 6px;color:${l.type === "add" ? "var(--green)" : l.type === "del" ? "var(--red)" : "var(--text3)"};user-select:none">${sign}</span>
-      <span class="diff-line-content">${escHtml(l.text)}</span>
-    </div>`;
-        });
-
-        return `<div style="font-size:11px;color:var(--text2);padding:4px 10px;background:var(--bg2);display:flex;gap:12px;border-bottom:1px solid var(--border)">
-    <span style="color:var(--green)">+${addCount} added</span>
-    <span style="color:var(--red)">-${delCount} removed</span>
-  </div>${html}`;
-      }
-
-      async function toggleDiff(btn) {
-        const block = btn.closest(".apply-block");
-        let diffView = block.querySelector(".diff-view");
-        if (diffView) {
-          diffView.remove();
-          btn.innerHTML = '<i class="ti ti-diff"></i> Show diff';
-          return;
-        }
-        btn.innerHTML =
-          '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Loading...';
-        const data = JSON.parse(decodeURIComponent(block.dataset.applyJson));
-        let oldContent = "";
-        try {
-          const res = await api("/api/files/read", {
-            rootDir: state.rootDir,
-            filePath: data.filePath,
-          });
-          oldContent = res.content;
-        } catch {}
-        const hunks = computeDiff(oldContent, data.content || "");
-        diffView = document.createElement("div");
-        diffView.className = "diff-view";
-        diffView.innerHTML = renderDiff(hunks);
-        block.appendChild(diffView);
-        btn.innerHTML = '<i class="ti ti-eye-off"></i> Hide diff';
-      }
-
       // ── Format & Apply ────────────────────────────────────────────
       function parseApplyJson(raw) {
         try {
           return JSON.parse(raw.trim());
         } catch (e) {
-          console.log("parse failed:", e.message, raw.slice(0, 100)); // add this
         }
         const match = raw.match(/\{[\s\S]*\}/);
         if (match) {
@@ -1960,8 +1989,7 @@
         <i class="ti ti-file-check" style="color:var(--green)"></i>
         <span class="apply-block-title">${data.action === "create" ? "Create" : "Edit"} file</span>
         <span class="apply-block-path">${escHtml(data.filePath)}</span>
-        <button class="diff-toggle"><i class="ti ti-diff"></i> Show diff</button>
-        <button class="apply-btn" data-json="${encoded}"><i class="ti ti-check"></i> Apply</button>
+        <button class="diff-toggle"><i class="ti ti-diff"></i> Review changes</button>
       </div>
       <div style="font-size:11px;color:var(--text3);margin-top:4px">${lineCount} lines</div>
     </div>`);
@@ -1985,7 +2013,7 @@
         el.className = "msg assistant typing-msg";
         el.innerHTML = `<div class="msg-avatar">AI</div><div class="msg-body"><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>`;
         container.appendChild(el);
-        container.scrollTop = container.scrollHeight;
+        if (typeof ChatScroll !== 'undefined') ChatScroll.restore();
       }
       function removeTyping() {
         document.querySelector(".typing-msg")?.remove();
@@ -2019,9 +2047,11 @@
       // ── Undo/Redo stack ───────────────────────────────────────────
       // CodeMirror handles undo/redo natively via Ctrl+Z / Ctrl+Y
       // This adds undo for AI-applied changes
-      const applyHistory = []; // { filePath, before, after, created }
+      // shortcut: retain the last ten file applies on disk to bound recovery data.
+      let savedUndo = {}; try { savedUndo=JSON.parse(LaptopStore.getItem('undoHistory') || '{}'); } catch {}
+      const applyHistory = savedUndo.rootDir===state.rootDir && Array.isArray(savedUndo.entries) ? savedUndo.entries.slice(-10) : [];
 
-      async function applyCode(btn) {
+      async function applyCode(btn, baseline) {
         const data = JSON.parse(decodeURIComponent(btn.dataset.json));
         if (!data.filePath) {
           alert("filePath is missing");
@@ -2032,6 +2062,7 @@
           return;
         }
         try {
+          if(state.openTabs.find(tab=>tab.path===data.filePath)?.modified)throw new Error('Save or close unsaved edits in '+data.filePath+' first.');
           let before = "";
           try {
             const r = await api("/api/files/read", {
@@ -2051,6 +2082,7 @@
             rootDir: state.rootDir,
             filePath: data.filePath,
             content: data.content,
+            ...(baseline ? baseline.missing ? {expectMissing:true} : {expectedContent:baseline.before} : {expectedContent:before}),
           });
 
           applyHistory.push({
@@ -2060,6 +2092,7 @@
             created: writeResult.created,
           });
           updateUndoBtn();
+          saveState();
 
           btn.className = "apply-btn applied";
           btn.innerHTML = '<i class="ti ti-check"></i> Applied';
@@ -2074,8 +2107,10 @@
             renderEditor();
           }
           loadTree();
+          return true;
         } catch (e) {
-          alert("Apply failed: " + e.message);
+          if(typeof Codebench!=='undefined')Codebench.notify('Apply stopped: '+e.message,true);else alert("Apply failed: " + e.message);
+          return false;
         }
       }
 
@@ -2085,19 +2120,23 @@
       }
 
       async function undoLastApply() {
+        if(typeof Codebench!=='undefined'&&Codebench.isApplying()){Codebench.notify('Wait for Apply to finish before Undo.');return;}
         const entry = applyHistory[applyHistory.length - 1];
         if (!entry) return;
         try {
+          if(state.openTabs.find(tab=>tab.path===entry.filePath)?.modified)throw new Error('Save or close unsaved editor changes before Undo.');
           if (entry.created) {
             await api("/api/files/delete", {
               rootDir: state.rootDir,
               filePath: entry.filePath,
+              expectedContent:entry.after,
             });
           } else {
             await api("/api/files/write", {
               rootDir: state.rootDir,
               filePath: entry.filePath,
               content: entry.before,
+              expectedContent:entry.after,
             });
           }
           const tab = state.openTabs.find((t) => t.path === entry.filePath);
@@ -2120,10 +2159,12 @@
             renderEditor();
           }
           applyHistory.pop();
+          saveState();
+          if(typeof Codebench!=='undefined')Codebench.afterUndo(entry);
           updateUndoBtn();
           loadTree();
         } catch (e) {
-          alert("Undo failed: " + e.message);
+          if(typeof Codebench!=='undefined')Codebench.notify('Undo stopped: '+e.message,true);else alert("Undo failed: " + e.message);
         }
       }
 

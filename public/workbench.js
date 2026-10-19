@@ -8,19 +8,23 @@
   if (typeof module !== 'undefined') module.exports = { panelWidths };
   if (typeof document === 'undefined') return;
   let saved = {};
-  try { saved = JSON.parse(localStorage.getItem('workbenchLayout') || '{}') || {}; } catch {}
-  const prefs = { sidebarWidth:260, chatWidth:420, sidebarCollapsed:false, chatCollapsed:false, wrap:false, fontSize:13, ...saved };
+  try { saved = JSON.parse(LaptopStore.getItem('workbenchLayout') || '{}') || {}; } catch {}
+  const prefs = { sidebarWidth:240, chatWidth:380, sidebarCollapsed:false, chatCollapsed:false, wrap:false, fontSize:13, ...saved };
   const app = document.querySelector('.app');
-  const persist = () => localStorage.setItem('workbenchLayout', JSON.stringify(prefs));
+  let compactPanel=null;
+  const persist = () => LaptopStore.setItem('workbenchLayout', JSON.stringify(prefs));
 
   function applyLayout() {
-    const leftVisible = !prefs.sidebarCollapsed && window.innerWidth >= 720;
-    const rightVisible = !prefs.chatCollapsed && window.innerWidth >= 520;
-    const widths = panelWidths(window.innerWidth, prefs.sidebarWidth, prefs.chatWidth, leftVisible, rightVisible);
+    const focus=app.classList.contains('focus-mode');
+    const compact=window.innerWidth<720;
+    app.classList.toggle('compact-panels',compact);
+    const leftVisible = !focus && (compact ? compactPanel==='explorer' : !prefs.sidebarCollapsed);
+    const rightVisible = !focus && (compact ? compactPanel==='chat' : !prefs.chatCollapsed);
+    const widths = panelWidths(window.innerWidth-44, prefs.sidebarWidth, prefs.chatWidth, leftVisible, rightVisible);
     app.classList.toggle('sidebar-collapsed', !leftVisible);
     app.classList.toggle('chat-collapsed', !rightVisible);
-    app.style.setProperty('--sidebar-width', widths.left + 'px');
-    app.style.setProperty('--chat-width', widths.right + 'px');
+    app.style.setProperty('--sidebar-width', (compact?Math.min(320,window.innerWidth-44):widths.left) + 'px');
+    app.style.setProperty('--chat-width', (compact?window.innerWidth-44:widths.right) + 'px');
     for (const [id, visible, size] of [['toggleSidebarBtn',leftVisible,widths.left],['toggleChatBtn',rightVisible,widths.right]]) {
       const button = document.getElementById(id);
       button.setAttribute('aria-expanded', String(visible));
@@ -30,8 +34,10 @@
     document.getElementById('resizer').setAttribute('aria-valuenow', String(Math.round(widths.right)));
     if (cmEditor) requestAnimationFrame(() => cmEditor?.refresh());
   }
-  window.toggleSidebar = function () { prefs.sidebarCollapsed = !prefs.sidebarCollapsed; persist(); applyLayout(); };
-  window.toggleChat = function () { prefs.chatCollapsed = !prefs.chatCollapsed; persist(); applyLayout(); };
+  window.toggleSidebar = function () { const focus=app.classList.contains('focus-mode');if(focus)Codebench.toggleFocus(false);if(window.innerWidth<720)compactPanel=compactPanel==='explorer'?null:'explorer';else prefs.sidebarCollapsed = focus ? false : !prefs.sidebarCollapsed; persist(); applyLayout(); };
+  window.toggleChat = function () { const focus=app.classList.contains('focus-mode');if(focus)Codebench.toggleFocus(false);if(window.innerWidth<720)compactPanel=compactPanel==='chat'?null:'chat';else prefs.chatCollapsed = focus ? false : !prefs.chatCollapsed; persist(); applyLayout(); };
+  window.getWorkbenchPreferences = ()=>({...prefs});
+  window.setWorkbenchPreferences = function(values) {Object.assign(prefs,values);persist();app.style.setProperty('--editor-font-size',prefs.fontSize+'px');cmEditor?.setOption('lineWrapping',prefs.wrap);document.getElementById('wrapBtn').setAttribute('aria-pressed',String(prefs.wrap));applyLayout();};
   window.toggleEditorWrap = function () {
     prefs.wrap = !prefs.wrap; persist();
     if (cmEditor) cmEditor.setOption('lineWrapping', prefs.wrap);
@@ -75,12 +81,12 @@
     });
     const end = () => { start=null; divider.classList.remove('dragging'); document.body.classList.remove('resizing'); persist(); };
     divider.addEventListener('pointerup', end); divider.addEventListener('pointercancel', end); divider.addEventListener('lostpointercapture', end);
-    divider.addEventListener('dblclick', () => { prefs[side === 'left' ? 'sidebarWidth' : 'chatWidth'] = side === 'left' ? 260 : 420; persist(); applyLayout(); });
+    divider.addEventListener('dblclick', () => { prefs[side === 'left' ? 'sidebarWidth' : 'chatWidth'] = side === 'left' ? 240 : 380; persist(); applyLayout(); });
     divider.addEventListener('keydown', event => {
       if (!['ArrowLeft','ArrowRight','Home'].includes(event.key)) return;
       event.preventDefault();
       const key = side === 'left' ? 'sidebarWidth' : 'chatWidth';
-      prefs[key] = event.key === 'Home' ? (side === 'left' ? 260 : 420) : Math.max(side === 'left' ? 160 : 220, prefs[key] + (event.key === 'ArrowRight' ? 16 : -16) * (side === 'left' ? 1 : -1));
+      prefs[key] = event.key === 'Home' ? (side === 'left' ? 240 : 380) : Math.max(side === 'left' ? 160 : 220, prefs[key] + (event.key === 'ArrowRight' ? 16 : -16) * (side === 'left' ? 1 : -1));
       persist(); applyLayout();
     });
   }
@@ -136,7 +142,7 @@
     else if (event.key.toLowerCase() === 'g') { event.preventDefault(); goToLine(); }
   });
   window.addEventListener('beforeunload', event => {
-    if (!state.loading && !state.openTabs.some(tab => tab.modified)) return;
+    if (!state.loading && !state.openTabs.some(tab => tab.modified) && (typeof Explorer==='undefined'||!Explorer.isBusy())) return;
     event.preventDefault(); event.returnValue = '';
   });
   window.addEventListener('resize', applyLayout);
