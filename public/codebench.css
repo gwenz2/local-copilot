@@ -96,6 +96,21 @@ button,summary { -webkit-tap-highlight-color:transparent; }
 .activity-events { list-style:none; padding:6px 20px; }
 .activity-events li { display:flex; gap:14px; align-items:flex-start; padding:9px 0; border-bottom:1px solid var(--border); font-size:12px; }
 .activity-events time { color:var(--text3); white-space:nowrap; font-size:10px; padding-top:2px; }
+.activity-events > .activity-run { display:block; padding:0; }
+.activity-run > details > summary { display:grid; grid-template-columns:auto minmax(0,1fr); gap:5px 12px; padding:12px 0; cursor:pointer; }
+.activity-run > details > summary > span:not(.activity-run-status) { overflow-wrap:anywhere; }
+.activity-run-status { grid-column:2; font-size:11px; color:var(--text2); }
+.activity-steps { list-style:none; padding:0 0 10px 12px; border-left:1px solid var(--border); margin-left:3px; }
+.activity-steps li { padding:8px 0; }
+.activity-steps li:last-child { border-bottom:0; }
+.activity-steps li > div { min-width:0; flex:1; overflow-wrap:anywhere; }
+.activity-steps details { margin-top:7px; }
+.activity-steps summary { cursor:pointer; color:var(--text2); font-size:11px; }
+.activity-steps pre { max-height:250px; overflow:auto; padding:9px; background:var(--bg2); border:1px solid var(--border); white-space:pre-wrap; overflow-wrap:anywhere; font:11px/1.6 var(--font-mono); margin:7px 0; }
+.activity-steps p { margin:6px 0; color:var(--text2); font-size:11px; }
+.activity-approval { display:flex; gap:8px; margin-top:9px; flex-wrap:wrap; }
+.activity-approval button { cursor:pointer; }
+.activity-artifact { display:block; margin-top:8px; color:var(--accent); font-size:11px; }
 .activity-footnote { margin-top:auto; padding:18px 20px; font-size:11px; color:var(--text2); }
 .live-response { padding:15px 20px; white-space:pre-wrap; overflow-wrap:anywhere; font:12px/1.65 var(--font-mono); }
 .live-chat-preview { white-space:pre-wrap; overflow-wrap:anywhere; color:var(--text2); font:12px/1.6 var(--font-ui); margin-top:8px; }
@@ -208,3 +223,9 @@ button,summary { -webkit-tap-highlight-color:transparent; }
 @media(max-width:520px) { .app { grid-template-rows:38px minmax(0,1fr) 23px; } .topbar-logo { font-size:0; gap:0; } .topbar-logo i { font-size:18px; } .topbar { padding:0 5px; flex-wrap:nowrap; } .command-search { font-size:10px; } .activity-rail { padding:4px; } .workspace-toolbar button { padding:0 8px; font-size:10px; } .workspace-run-state { font-size:9px; } .settings-layout { flex-direction:column; min-height:300px; } .settings-nav { width:100%; border-right:0; border-bottom:1px solid var(--border); flex-direction:row; padding:5px; overflow:auto; gap:1px; } .settings-nav button { font-size:10px; white-space:nowrap; padding:8px 6px; } .settings-content { padding:16px; } .settings-modal { padding:0; } .split-diff { overflow-x:auto; } .split-diff .diff-editor { min-width:240px; } }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }
 html[data-reduced-motion="true"] *,html[data-reduced-motion="true"] *::before,html[data-reduced-motion="true"] *::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; }
+
+/* Connection and tool fields follow the existing Settings form controls. */
+#connectionFields { display:flex; flex-direction:column; gap:12px; min-width:0; }
+.settings-content input[type="url"],.settings-content textarea { width:100%; min-width:0; border:1px solid var(--border); border-radius:4px; background:var(--bg3); color:var(--text); padding:9px 12px; font:12px var(--font-mono); }
+.settings-content textarea { resize:vertical; min-height:72px; }
+.settings-content input[type="url"]:focus,.settings-content textarea:focus { outline:1px solid var(--accent); outline-offset:1px; }

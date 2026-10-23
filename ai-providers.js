@@ -61,7 +61,7 @@ function createProviderClient(http = axios) {
     return [...new Set(ids)].filter(id => provider !== 'openui' || id.endsWith('-free')).sort();
   }
 
-  async function chat({ provider = 'deepseek', baseUrl, apiKey, model, system, messages, maxTokens = 8192, memory, onProgress=()=>{}, onDelta, signal }) {
+  async function chat({ provider = 'deepseek', baseUrl, apiKey, model, system, messages, maxTokens = 8192, memory, agent, onProgress=()=>{}, onDelta, signal }) {
     const config = providerConfig(provider, baseUrl);
     model = model || config.defaultModel;
     if (typeof model !== 'string' || !model.trim() || model.length > 200) throw new Error('Choose a valid model ID');
@@ -79,31 +79,41 @@ When proposing file changes, keep every literal fenced apply JSON block OUTSIDE 
 Use presentational components and local interactions. No backend tools are connected to generated views: do not emit Query, Mutation, external network actions or automatic file operations. UI buttons cannot apply code changes. Never output raw executable HTML or JavaScript.` });
     const requestOptions = options(config, apiKey);
     if(signal)requestOptions.signal=signal;
+    const tools=[...(memory?.tools||[]),...(agent?.tools||[])];
+    const hasTools=tools.length>0;
+    const roundLimit=agent?.maxRounds||5;
     let toolCount=0;
     async function useTool(name,args){
       signal?.throwIfAborted();
-      const descriptions={obsidian_search:'Searching permitted Obsidian notes',obsidian_read:'Reading permitted Obsidian notes',obsidian_create:'Saving a new project note',obsidian_update:'Updating a project note section'};
-      onProgress({type:'status',text:descriptions[name]||'Checking Obsidian tool access'});
-      try{return await memory.call(name,args);}catch(error){return {error:error.message || 'Obsidian operation denied or unavailable. Do not claim it succeeded.'};}
+      const started=Date.now();
+      const known=tools.some(tool=>tool.function.name===name);
+      if(!known)return {error:'Tool is unavailable or disabled'};
+      onProgress({type:'tool-start',name,text:'Started '+name});
+      let result;
+      try{result=name.startsWith('obsidian_')?await memory.call(name,args):await agent.execute(name,args);}
+      catch(error){result={error:error.message||'Tool failed. Do not claim it succeeded.'};}
+      const output=JSON.stringify(result);
+      onProgress({type:result?.error?'tool-error':'tool-result',name,text:name+(result?.error?' failed':' finished'),output:output.slice(0,24000),duration:Date.now()-started,...(result?.screenshotUrl?{screenshotUrl:result.screenshotUrl}:{})});
+      return result;
     }
     let data, text, finishReason, usage;
     if (provider === 'anthropic') {
       onProgress({type:'status',text:'Waiting for Claude’s response'});
       const body={model,system,messages:cleanMessages,max_tokens:maxTokens,stream:false};
       const totals={input_tokens:0,output_tokens:0};
-      for(let round=0;round<5;round++){
+      for(let round=0;round<roundLimit;round++){
         signal?.throwIfAborted();
-        if(memory){body.tools=memory.tools.map(({function:tool})=>({name:tool.name,description:tool.description,input_schema:tool.parameters}));body.tool_choice={type:round===4||toolCount>=12?'none':'auto'};}
+        if(hasTools){body.tools=tools.map(({function:tool})=>({name:tool.name,description:tool.description,input_schema:tool.parameters}));body.tool_choice={type:round===roundLimit-1||toolCount>=12?'none':'auto'};}
         data=(await http.post(config.url+'/messages',body,requestOptions)).data;
-        if(memory)for(const key of Object.keys(totals))totals[key]+=Number(data.usage?.[key])||0;
+        if(hasTools)for(const key of Object.keys(totals))totals[key]+=Number(data.usage?.[key])||0;
         const calls=(data.content||[]).filter(block=>block.type==='tool_use');
-        if(!memory||!calls.length||data.stop_reason==='max_tokens')break;
-        if(round===4||toolCount+calls.length>12)throw new Error('Memory tool limit reached. Try a more focused question.');
+        if(!hasTools||!calls.length||data.stop_reason==='max_tokens')break;
+        if(round===roundLimit-1||toolCount+calls.length>12)throw new Error('Agent tool limit reached. Review the results and continue with a focused request.');
         body.messages.push({role:'assistant',content:data.content});
         const results=[];
         for(const call of calls){
-          if(typeof call.id!=='string'||call.id.length>200)throw new Error('Invalid memory tool call');
-          if(!call.input||typeof call.input!=='object'||JSON.stringify(call.input).length>16000)throw new Error('Invalid memory tool arguments');
+          if(typeof call.id!=='string'||call.id.length>200)throw new Error('Invalid agent tool call');
+          if(!call.input||typeof call.input!=='object'||JSON.stringify(call.input).length>16000)throw new Error('Invalid agent tool arguments');
           toolCount++;const result=await useTool(call.name,call.input);
           results.push({type:'tool_result',tool_use_id:call.id,content:JSON.stringify(result),...(result.error?{is_error:true}:{})});
         }
@@ -111,38 +121,38 @@ Use presentational components and local interactions. No backend tools are conne
       }
       text = (data.content || []).filter(block => block.type === 'text').map(block => block.text).join('\n');
       finishReason = data.stop_reason;
-      usage = memory?{...totals,total_tokens:totals.input_tokens+totals.output_tokens}:data.usage;
+      usage = hasTools?{...totals,total_tokens:totals.input_tokens+totals.output_tokens}:data.usage;
     } else {
       const body = { model, messages: [{ role: 'system', content: system }, ...cleanMessages], stream: Boolean(onDelta) };
       if(onDelta){requestOptions.responseType='stream';if(['openai','openui'].includes(provider))body.stream_options={include_usage:true};}
       body[provider === 'openai' ? 'max_completion_tokens' : 'max_tokens'] = maxTokens;
       const totals = {prompt_tokens:0,completion_tokens:0,total_tokens:0};
-      for (let round = 0; round < 5; round++) {
+      for (let round = 0; round < roundLimit; round++) {
         signal?.throwIfAborted();
         onProgress({type:'status',text:round?'Generating response with retrieved context':'Waiting for '+(provider==='openui'?'OpenUI':provider)});
         onProgress({type:'reset'});
-        if (memory) { body.tools = memory.tools; body.tool_choice = round === 4 || toolCount >= 12 ? 'none' : 'auto'; }
+        if (hasTools) { body.tools = tools; body.tool_choice = round === roundLimit-1 || toolCount >= 12 ? 'none' : 'auto'; }
         const response = await http.post(config.url + '/chat/completions', body, requestOptions);
         data = onDelta ? await readCompletion(response.data,onDelta,signal) : response.data;
-        if (memory) for (const key of Object.keys(totals)) totals[key] += Number(data.usage?.[key]) || 0;
+        if (hasTools) for (const key of Object.keys(totals)) totals[key] += Number(data.usage?.[key]) || 0;
         const message = data.choices?.[0]?.message;
-        if (!memory || !message?.tool_calls?.length || ['length','max_tokens'].includes(data.choices?.[0]?.finish_reason)) break;
-        if (round === 4 || toolCount + message.tool_calls.length > 12) throw new Error('Memory tool limit reached. Try a more focused question.');
+        if (!hasTools || !message?.tool_calls?.length || ['length','max_tokens'].includes(data.choices?.[0]?.finish_reason)) break;
+        if (round === roundLimit-1 || toolCount + message.tool_calls.length > 12) throw new Error('Agent tool limit reached. Review the results and continue with a focused request.');
         body.messages.push({role:'assistant',content:message.content || null,tool_calls:message.tool_calls});
         for (const call of message.tool_calls) {
-          if (typeof call.id !== 'string' || call.id.length > 200) throw new Error('Invalid memory tool call');
+          if (typeof call.id !== 'string' || call.id.length > 200) throw new Error('Invalid agent tool call');
           toolCount++;
           let result;
           try {
             if (typeof call.function?.arguments !== 'string' || call.function.arguments.length > 16000) throw new Error();
             result = await useTool(call.function.name,JSON.parse(call.function.arguments));
-          } catch { result = {error:'Obsidian operation denied or unavailable. Do not claim it succeeded.'}; }
+          } catch { result = {error:'Tool operation denied or unavailable. Do not claim it succeeded.'}; }
           body.messages.push({role:'tool',tool_call_id:call.id,content:JSON.stringify(result)});
         }
       }
       text = data.choices?.[0]?.message?.content;
       finishReason = data.choices?.[0]?.finish_reason;
-      usage = memory ? totals : data.usage;
+      usage = hasTools ? totals : data.usage;
     }
     if (provider === 'openui' && typeof text === 'string') text = parseMessage(text).content;
     if (typeof text !== 'string' || !text.trim()) throw new Error('Model returned no text. Try a larger output limit or a text chat model.');

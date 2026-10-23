@@ -10,6 +10,8 @@ let providerDrafts = {};
 let providerDraft = 'deepseek';
 let modelListRequest = 0;
 let settingsOpener;
+let connectionSnapshot;
+let connectionRequest=0;
 
 function readAiProfiles() {
   try { return JSON.parse(LaptopStore.getItem('aiProfiles') || '{}') || {}; } catch { return {}; }
@@ -54,7 +56,7 @@ function renderProviderDraft() {
   document.getElementById('obsidianMemoryField').hidden = false;
   document.getElementById('obsidianModeInput').value = obsidianModeFor(profile,providerDraft);
   updateObsidianModeHelp();
-  document.getElementById('obsidianStatus').textContent = state.obsidianConfigured ? 'Server connection configured. Only permitted notes are accessible.' : 'Configure Obsidian MCP on the local server, then restart.';
+  document.getElementById('obsidianStatus').textContent = state.obsidianConfigured ? 'Server connection configured. Only permitted notes are accessible.' : 'Configure Obsidian MCP in Connections.';
   document.getElementById('apiKeyLabel').textContent = providerPresets[providerDraft].label + ' API key';
   document.getElementById('providerHelp').textContent = providerDraft === 'openui'
     ? 'Chat through OpenUI Gateway. The free-model list is ready to use; no custom URL is needed.'
@@ -73,8 +75,9 @@ function updateCredentialStatus() {
   input.disabled = managed;
   input.placeholder = managed ? 'Managed by the local server' : configured ? 'Leave blank to use the server key' : 'Provider API key';
   const status = document.getElementById('credentialStatus');
+  document.getElementById('manageOpenuiConnection').hidden = !managed;
   status.textContent = managed
-    ? configured ? 'Server key configured. Your key stays off the browser.' : 'Add THESYS_API_KEY to the local .env file, then restart Draftdrion.'
+    ? configured ? 'Shared server key configured. Replace or remove it in Connections.' : 'Add your OpenUI backend key in Connections.'
     : configured ? 'A server key is available. Leave this field blank to use it.' : 'A key entered here is saved on this laptop by the local server.';
   status.dataset.tone = managed ? configured ? 'success' : 'warning' : '';
 }
@@ -149,12 +152,14 @@ function openSettings(category = 'workspace') {
   providerDraft = state.provider;
   document.getElementById('providerInput').value = providerDraft;
   document.getElementById('backendUrl').value = state.backendUrl;
+  document.getElementById('backendUrl').readOnly = Boolean(window.__CODEBENCH_LOCAL_STATE__.desktop);
   renderProviderDraft();
   Codebench.loadSettings();
   Codebench.settingsTab(category);
   document.getElementById('settingsModal').classList.remove('hidden');
   refreshServerKeys();
   loadObsidianChanges();
+  loadConnections();
   document.querySelector(`[data-settings-tab="${category}"]`)?.focus();
 }
 
@@ -183,6 +188,8 @@ async function saveSettings() {
     }
   }
   if (!Codebench.savePreferences()) return;
+  try {await AgentSettings.save();} catch(error) {document.getElementById('agentSettingsStatus').textContent=error.message;Codebench.settingsTab('agent');return;}
+  try {await saveConnectionDraft();} catch(error) {document.getElementById('connectionsStatus').textContent=error.message;Codebench.settingsTab('connections');return;}
   try {
     for (const [provider,draft] of Object.entries(providerDrafts)) {
       if (draft.apiKey && provider !== 'openui') await LaptopStore.saveCredential(provider,draft.apiKey);
@@ -192,10 +199,10 @@ async function saveSettings() {
   Object.assign(aiProfiles, providerDrafts);
   state.provider = providerDraft;
   Object.assign(state, profile);
-  state.backendUrl = document.getElementById('backendUrl').value.trim() || window.location.origin;
+  state.backendUrl = window.__CODEBENCH_LOCAL_STATE__.desktop ? window.location.origin : document.getElementById('backendUrl').value.trim() || window.location.origin;
   LaptopStore.setItem('aiProfiles', JSON.stringify(aiProfiles));
   LaptopStore.setItem('aiProvider', state.provider);
-  LaptopStore.setItem('backendUrl', state.backendUrl);
+  if (!window.__CODEBENCH_LOCAL_STATE__.desktop) LaptopStore.setItem('backendUrl', state.backendUrl);
   try { await LaptopStore.flush(); } catch(error) {Codebench.notify(error.message,true);return;}
   closeSettings();
   updateAiStatus();
@@ -270,9 +277,79 @@ async function loadObsidianChanges(){
 document.getElementById('settingsModal').addEventListener('keydown', event => {
   if (event.key === 'Escape') { event.preventDefault(); closeSettings(); }
   if (event.key === 'Tab') {
-    const elements = [...event.currentTarget.querySelectorAll('input,select,button,summary')].filter(element => !element.disabled && element.getClientRects().length);
+    const elements = [...event.currentTarget.querySelectorAll('input,select,textarea,button,summary')].filter(element => !element.disabled && element.getClientRects().length);
     const first=elements[0], last=elements[elements.length-1];
     if (event.shiftKey && event.target === first) { event.preventDefault(); last.focus(); }
     else if (!event.shiftKey && event.target === last) { event.preventDefault(); first.focus(); }
   }
 });
+
+function addConnectionMapping(root=state.rootDir || '',folder='') {
+  const row=document.createElement('div');row.className='connection-mapping';
+  row.style.cssText='display:grid;grid-template-columns:1fr;gap:6px;margin-bottom:12px';
+  const rootInput=document.createElement('input');rootInput.type='text';rootInput.value=root;rootInput.placeholder='Absolute local project folder';rootInput.setAttribute('aria-label','Local project folder');
+  const folderInput=document.createElement('input');folderInput.type='text';folderInput.value=folder;folderInput.placeholder='02 - Projects/Active/Your project';folderInput.setAttribute('aria-label','Vault project folder');
+  const remove=document.createElement('button');remove.type='button';remove.className='btn-sm';remove.textContent='Remove mapping';remove.style.justifySelf='start';remove.onclick=()=>row.remove();
+  row.append(rootInput,folderInput,remove);document.getElementById('connectionProjectMappings').appendChild(row);
+}
+function renderConnections(result) {
+  connectionSnapshot=result;
+  document.getElementById('openuiConnectionKey').value='';
+  document.getElementById('obsidianConnectionAuthorization').value='';
+  document.getElementById('removeOpenuiConnectionKey').checked=false;
+  document.getElementById('removeObsidianConnectionAuthorization').checked=false;
+  document.getElementById('obsidianConnectionUrl').value=result.obsidianUrl;
+  document.getElementById('openuiConnectionState').textContent=result.openuiConfigured?'A key is saved. Its value is never sent back to this page.':'No OpenUI key saved.';
+  document.getElementById('obsidianConnectionState').textContent=result.obsidianAuthorizationConfigured?'Authorization is saved. Its value is never sent back to this page.':'No Obsidian authorization saved.';
+  document.getElementById('connectionProjectMappings').replaceChildren();
+  for(const [root,folder] of Object.entries(result.projects || {}))addConnectionMapping(root,folder);
+  document.getElementById('connectionFields').disabled=false;
+}
+async function loadConnections() {
+  const request=++connectionRequest;connectionSnapshot=undefined;
+  document.getElementById('connectionFields').disabled=true;
+  document.getElementById('connectionsStatus').textContent='Loading shared connections…';
+  try {const result=await api('/api/connections/status',{});if(request!==connectionRequest)return;renderConnections(result);document.getElementById('connectionsStatus').textContent='Saved connections are shared by both local editions.';}
+  catch(error) {if(request===connectionRequest)document.getElementById('connectionsStatus').textContent=error.message;}
+}
+function connectionDraft() {
+  const projects={};
+  for(const row of document.querySelectorAll('#connectionProjectMappings .connection-mapping')) {
+    const [root,folder]=[...row.querySelectorAll('input')].map(input=>input.value.trim());
+    if(!root&&!folder)continue;
+    if(!root||!folder)throw new Error('Complete both fields for each project mapping, or remove the row.');
+    if(Object.hasOwn(projects,root))throw new Error('Each local project can have only one vault mapping.');
+    projects[root]=folder;
+  }
+  return {revision:connectionSnapshot.revision,openuiKey:document.getElementById('openuiConnectionKey').value.trim(),removeOpenuiKey:document.getElementById('removeOpenuiConnectionKey').checked,obsidianUrl:document.getElementById('obsidianConnectionUrl').value.trim(),obsidianAuthorization:document.getElementById('obsidianConnectionAuthorization').value.trim(),removeObsidianAuthorization:document.getElementById('removeObsidianConnectionAuthorization').checked,projects};
+}
+async function saveConnectionDraft() {
+  if(!connectionSnapshot)return;
+  const draft=connectionDraft();
+  if(!draft.openuiKey&&!draft.removeOpenuiKey&&!draft.obsidianAuthorization&&!draft.removeObsidianAuthorization&&draft.obsidianUrl===connectionSnapshot.obsidianUrl&&JSON.stringify(draft.projects)===JSON.stringify(connectionSnapshot.projects))return;
+  const result=await api('/api/connections/save',draft);renderConnections(result);await refreshServerKeys();
+}
+async function saveConnectionsFromButton() {
+  const status=document.getElementById('connectionsStatus');
+  try {await saveConnectionDraft();status.textContent='Connections saved on this laptop. New requests use these settings.';}
+  catch(error) {status.textContent=error.message;}
+}
+async function testOpenuiConnection() {
+  const status=document.getElementById('connectionsStatus');
+  try {await saveConnectionDraft();status.textContent='Testing OpenUI Gateway…';const result=await api('/api/models',{provider:'openui'});status.textContent='OpenUI Gateway connected. '+result.models.length+' free models listed.';}
+  catch(error) {status.textContent=error.message;}
+}
+async function testMappedObsidianConnection() {
+  const status=document.getElementById('connectionsStatus');
+  try {await saveConnectionDraft();status.textContent='Testing Obsidian MCP…';const result=await api('/api/obsidian/status',{provider:providerDraft,obsidianMode:'read-only',rootDir:state.rootDir});status.textContent=result.project?'Connected. Current project maps to '+result.project+'.':'Connected. No mapping for the current project; shared notes are read only.';}
+  catch(error) {status.textContent=error.message;}
+}
+async function createCurrentObsidianProject() {
+  const status=document.getElementById('connectionsStatus');
+  if(!state.rootDir){status.textContent='Open a local project first.';return;}
+  const name=state.rootDir.replace(/\\/g,'/').split('/').filter(Boolean).pop();
+  if(!window.confirm(`Create an Obsidian project named “${name}” and four starter notes?`))return;
+  status.textContent='Creating Obsidian project…';
+  try { const result=await api('/api/obsidian/project',{rootDir:state.rootDir,projectName:name}); renderConnections(result); status.textContent=`Created and mapped ${result.folder}.`; }
+  catch(error){status.textContent=error.message;}
+}

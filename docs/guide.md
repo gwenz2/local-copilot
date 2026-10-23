@@ -73,7 +73,7 @@ Off prevents new MCP connections/retrieval for that turn. Read only provides sea
 
 Replies list actual note reads/changes, and verified write events appear immediately in chat. **Recent note changes · this laptop** in Settings shows local history, including unconfirmed operations. The server keeps the last 100 write-state records in `obsidian-changes.json` beside `state.json` (paths/statuses only, no note content or credentials). History remains available after an interrupted reply. Stop cannot undo completed writes; an operation already in flight may finish. If a write is unconfirmed, inspect the note before retrying. Saved mode changes apply to new messages; earlier retrieved excerpts remain in conversation history.
 
-Configure these values privately in the server's ignored `.env`, then restart:
+Use **Settings → Connections** to save the local MCP address, Authorization value, and project mappings. Both web and desktop read the same server-side configuration on the next request. You can seed an initial connection through the ignored `.env`:
 
 ```env
 OBSIDIAN_MCP_URL=http://127.0.0.1:27123/mcp/
@@ -81,25 +81,25 @@ OBSIDIAN_MCP_AUTHORIZATION='Bearer YOUR_OBSIDIAN_MCP_CREDENTIAL'
 OBSIDIAN_PROJECTS='{"C:/xampp/htdocs/ai-copilot":"02 - Projects/Active/AI Copilot"}'
 ```
 
-Use the endpoint and Authorization value from your existing Obsidian MCP configuration. This connector supports local Streamable HTTP MCP endpoints; redirects and remote MCP endpoints are blocked. Never put the credential in browser Settings, Markdown notes or Git. `OBSIDIAN_PROJECTS` maps exact local project roots to their vault project folders. Add explicit mappings there for other projects; an unmapped root can use only the shared instruction/preference notes.
+Use the endpoint and Authorization value from your existing Obsidian MCP configuration. This connector supports local Streamable HTTP MCP endpoints; redirects and remote MCP endpoints are blocked. Enter the credential only in the password field under Connections; it is saved server-side and never returned to the page. Never put it in Markdown notes or Git. `OBSIDIAN_PROJECTS` maps exact local project roots to their vault project folders. Add explicit mappings in Connections for other projects; an unmapped root can use only the shared instruction/preference notes.
 
 The backend exposes `obsidian_search` and `obsidian_read`, backed by MCP `search_query`/`vault_read`. Only an opted-in, mapped read-write session receives `obsidian_create`/`obsidian_update`, backed by MCP `vault_write`/`vault_patch` and revision maps. All vault operations use the configured MCP integration; there is no vault filesystem fallback. It permits the shared bootstrap/policy/UI/architecture notes and the selected mapped project's Markdown notes. Restricted or missing `ai_access`, unrelated projects, traversal paths, hidden files, logs, archives, attachments and credential/secret paths are blocked. Only `public` or `internal` notes pass classification checks. Searches filter scope/classification before content matching; reads and updates recheck access. New note paths are server-generated, so a model cannot overwrite an existing note through create.
 
-Each enabled memory turn loads the four bootstrap notes, then lets the model retrieve relevant notes. Excerpts are limited to 6,000 characters per note and 24,000 total per turn; long notes may be truncated. At most 12 model tool calls and 5 inference rounds are permitted. Memory adds model requests/tokens—this is not a token-saving feature. Usage totals include all inference rounds. Retrieved excerpts go to the selected provider/model under its service terms. MCP credentials remain local. An unavailable connection is shown explicitly; bootstrap failure stops that answer rather than inventing memory access. Claude uses native tool-use/result messages and buffered responses; compatible providers retain streaming. Only OpenUI renders generated OpenUI components.
+Each enabled memory turn loads the four bootstrap notes, then lets the model retrieve relevant notes. Excerpts are limited to 6,000 characters per note and 24,000 total per turn; long notes may be truncated. At most 12 combined model tool calls and the configured Agent & tools round limit are permitted (5 rounds by default). Memory adds model requests/tokens—this is not a token-saving feature. Usage totals include all inference rounds. Retrieved excerpts go to the selected provider/model under its service terms. MCP credentials remain local. An unavailable connection is shown explicitly; bootstrap failure stops that answer rather than inventing memory access. Claude uses native tool-use/result messages and buffered responses; compatible providers retain streaming. Only OpenUI renders generated OpenUI components.
 
 Obsidian modes govern the connector, independently of reviewed code proposals and editor file operations. Generated UI widgets still have no MCP access. Memory endpoints reject nonlocal Host/Origin headers for every provider and mode. Prior chat history still follows its normal sharing rules when memory is off.
 
 Custom providers need an API base URL, such as `https://example.com/v1`. Local compatible servers can run without an API key.
 
-The AI sees the files you attach, not your entire project folder. Attached code is sent to the selected provider. OpenUI's key stays in the server environment; other saved provider keys stay in a separate server-side file on this laptop. API access and billing depend on your provider account.
+With repository exploration enabled, the AI can search and read permitted files inside the selected project. Attached and tool-retrieved code is sent to the selected provider. OpenUI's key stays in the shared server-side connection file; other saved provider keys stay in a separate server-side file on this laptop. API access and billing depend on your provider account.
 
 ## Workspace and local storage
 
-The compact header and side rail retain Explorer, Quick Open, chat, Changes, activity, Settings and feedback mute. The header menu contains the remaining editor/history commands. Settings are grouped into **Workspace**, **Editor & review**, **AI & context**, and **Feedback**. New installations start with OpenUI; existing provider choices are preserved. Focus mode and browser fullscreen have separate controls.
+The compact header and side rail retain Explorer, Quick Open, chat, Changes, activity, Settings and feedback mute. The header menu contains the remaining editor/history commands. Settings are grouped into **Workspace**, **Editor & review**, **AI & context**, **Connections**, **Agent & tools**, and **Feedback**. New installations start with OpenUI; existing provider choices are preserved. Focus mode and browser fullscreen have separate controls.
 
 Settings, provider/model selection, panel layout, project conversations, attached context, editor drafts, composer drafts and the last ten AI file applies are saved by the local server in `%LOCALAPPDATA%\GwensCodebench\state.json` on Windows. On this laptop that is `C:\Users\gwenb\AppData\Local\GwensCodebench`. `CODEBENCH_DATA_DIR` overrides the directory for testing or a deliberate move. This is file storage, not browser-session storage; another browser connected to the same server can recover it. The footer confirms **Saved on laptop**. Saves debounce for 250 ms; wait for confirmation before closing. Unsaved editor drafts are recovery copies, not writes to the original project files.
 
-On the first launch with an empty laptop profile, existing app data from that browser is imported once. Provider credentials migrate separately to `credentials.json`; imported app keys are removed from browser storage only after confirmed disk saves. Existing laptop data takes precedence, and legacy data in other browsers is preserved. Open the updated app in your original browser first if you want its previous conversations imported. There is no cloud settings synchronization. Back up this folder yourself; protect `credentials.json`, which is a plain-text local file protected by your Windows account permissions, not encrypted storage. THESYS_API_KEY and Obsidian MCP credentials remain in the ignored `.env`. Never commit or share either credential file.
+On the first launch with an empty laptop profile, existing app data from that browser is imported once. Provider credentials migrate separately to `credentials.json`; imported app keys are removed from browser storage only after confirmed disk saves. Existing laptop data takes precedence, and legacy data in other browsers is preserved. Open the updated app in your original browser first if you want its previous conversations imported. There is no cloud settings synchronization. Back up this folder yourself; protect `credentials.json`, which is a plain-text local file protected by your Windows account permissions, not encrypted storage. OpenUI and Obsidian connection details are imported once into private `connections.json`; existing shared configuration wins over later environment files. Manage them in Connections. `agent-policy.json` stores tool permissions. Never commit or share credential files.
 
 Original project files are checked again at Apply/Undo to prevent overwriting changes made since review. Use **Reload original** if a file changed on disk. Save or close an unsaved editor buffer before applying AI edits to it. Selected files apply one at a time; if one fails, earlier successful files remain applied and individually undoable. Interrupted or output-limited responses cannot be applied.
 
@@ -130,3 +130,46 @@ npm test
 ```
 
 The server listens on `127.0.0.1` by default. Files are limited to 2 MB each, and the explorer lists up to 10,000 entries.
+
+## Windows desktop app
+
+The Electron desktop app reuses the existing Express server and frontend. It binds its own server to a free port on 127.0.0.1 and closes it when the app quits; it does not require the web server on port 3000/3001. The browser edition still starts with `npm start`.
+
+From source, after `npm install`:
+
+```bash
+npm run desktop
+```
+
+To create a Windows x64 installer:
+
+```bash
+npm run desktop:build
+```
+
+Output: `dist/Draftdrion-Setup-1.2.0-x64.exe` (version changes with package.json). `npm run desktop:pack` creates an unpacked build instead. The installer supports a per-user install, installation folder selection, a Start Menu entry and a desktop shortcut. No separate Node.js installation is needed to run an installed build. This initial build is unsigned; Windows may show a publisher/SmartScreen warning. Signing and automatic updates are not configured.
+
+Settings, chats, drafts, saved provider credentials and Undo history use the existing `%LOCALAPPDATA%\GwensCodebench` directory. The legacy name is retained for compatibility. The desktop app always uses its own backend URL and does not overwrite the browser edition's saved URL. Simultaneous browser/desktop edits still follow the existing stale-save conflict checks.
+
+Packaged apps load optional private configuration from `%LOCALAPPDATA%\GwensCodebench\desktop.env`, or from `desktop.env` inside `CODEBENCH_DATA_DIR` when explicitly overridden. On the first launch only, these environment values can seed the shared `connections.json`. Existing shared values take precedence; manage OpenUI and Obsidian through Settings → Connections thereafter, without restarting for new requests. Other providers continue saving keys through Settings. Development launches use the project's existing `.env` unless DRAFTDRION_ENV_FILE is explicitly set.
+
+The installer excludes project `.env`, `.apikey`, desktop.env, saved credentials, user state, tests and development documentation. Never add private files to the packaging allowlist. API calls still use the selected provider and its billing/terms; desktop packaging does not add offline models or free unlimited AI.
+
+The renderer has Node integration disabled, context isolation and Chromium sandboxing enabled, and navigation is restricted to the local app. Generated OpenUI views keep their existing isolated iframe. New browser windows and external navigation are blocked. The app asks before closing when unsaved edits or pending saves would prevent unloading.
+
+
+## Agent tools and approvals
+
+**Settings → Agent & tools** applies to all providers and both editions on this laptop. New requests read current settings; Stop is required to cancel an already running request. Repository exploration, web search, and public page reading default on; isolated browser inspection defaults off. Terminal defaults to asking for each command. Unsupported tool-calling models return their provider error rather than silently switching providers.
+
+Repository tools list/search/read text under the selected project, excluding hidden files, common credentials, generated/dependency directories, symbolic links, and detected Obsidian vaults. Listings stop at 5,000 entries; individual tool reads are limited to 200 KB, retrieved file context to 120,000 characters, and each search scans at most 2 MB. These tools do not edit files. Obsidian still uses only its configured MCP connector and scoped access modes.
+
+Web search uses a public Bing RSS response without a separate search credential. Results include source links; the model is instructed to open relevant pages before citing claims. This endpoint has no availability guarantee and may rate limit or return no usable results. Page reading downloads at most 1 MB, returns at most 16,000 characters, pins validated public DNS addresses, and revalidates redirects. Local/private/reserved networks, embedded credentials and custom ports are blocked. Page content is evidence, not permission to run tools.
+
+Isolated browser inspection uses bundled Electron, a new temporary profile, public IPv4 DNS pinned before process launch, direct networking, sandboxed renderers with Node disabled, denied permissions/downloads/popups, and same-host standard-port requests only. It returns page text, console errors and a screenshot thumbnail displayed in activity. Cross-site resources/redirects, signed-in sessions, private-network and local development sites are excluded in this initial version. It does not click controls, submit forms, or execute model-supplied scripts. A successful inspection does not prove application behavior. Screenshots remain server-memory artifacts for this running session (last 20), not permanent files.
+
+Commands run in the selected project with a minimal environment, a 60-second limit and bounded/redacted output. Approval appears in AI activity with the exact command, working directory and reason. Approvals expire after five minutes, cannot be replayed, and Stop/disconnection denies pending requests. A denied approval blocks further commands for that request. **Automatically approve listed commands** skips confirmation only for exact recognized test/build/check or read-only Git commands; everything else asks. **Automatically approve all commands** needs no list and skips all command approvals, including critical commands. Its automatic approvals appear in activity. Off and Ask remain available, and changing the setting applies to new requests. The tool must actually be called; a chat approval card is not execution. An approved project script can have side effects: this is authorization, not an OS sandbox. Do not approve commands you do not understand. Terminal commands are not a substitute for the Obsidian connector or reviewed Apply workflow.
+
+The configured test command exposes Run tests to the model. Actual exit codes and bounded output are fed back so it can explain failures and propose corrected files. Edits remain proposals until you apply them; ask for another test run after Apply. There is no unattended edit-and-retry loop. Maximum rounds (2–10, default 5) and 12 combined tool calls bound each request. More tool rounds consume more provider tokens.
+
+Activity groups the last 20 requests per project, with up to 100 timestamped steps each. Summaries persist in `state.json` through LaptopStore; full commands, command output and screenshot links are session-only. Stop immediately disables pending approval controls, and reloaded/interrupted requests cannot reuse approvals. No private model reasoning is displayed. Existing chat history, reviewed changes and Undo remain separate.

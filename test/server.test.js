@@ -4,7 +4,11 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
+const testData=fs.mkdtempSync(path.join(os.tmpdir(),'draftdrion-server-state-'));
+process.env.CODEBENCH_DATA_DIR=testData;
+process.env.DRAFTDRION_ENV_FILE=path.join(testData,'absent.env');
 const { app, safePath, validateRoot } = require("../server");
+test.after(()=>fs.rmSync(testData,{recursive:true,force:true}));
 
 test("safePath keeps files inside the selected project", () => {
   const root = path.resolve(os.tmpdir(), "copilot-project");
@@ -122,12 +126,14 @@ test("Obsidian modes validate all providers, Off never connects, and nonlocal re
 
 test("unavailable Obsidian MCP returns a useful status without exposing credentials", async (t) => {
   const priorUrl=process.env.OBSIDIAN_MCP_URL,priorAuth=process.env.OBSIDIAN_MCP_AUTHORIZATION;
-  process.env.OBSIDIAN_MCP_URL='http://127.0.0.1:1/mcp/';
-  process.env.OBSIDIAN_MCP_AUTHORIZATION='test-private-credential';
+  const connections=require('../connections').createConnections(testData);
+  const previous=connections.env();
+  connections.save({...connections.status(),obsidianUrl:'http://127.0.0.1:1/mcp/',obsidianAuthorization:'test-private-credential'});
   const server=app.listen(0,'127.0.0.1');
   await new Promise(resolve=>server.once('listening',resolve));
   t.after(()=>{
-    server.close();
+    server.closeAllConnections();server.close();
+    connections.save({...connections.status(),obsidianUrl:previous.OBSIDIAN_MCP_URL,obsidianAuthorization:previous.OBSIDIAN_MCP_AUTHORIZATION,removeObsidianAuthorization:!previous.OBSIDIAN_MCP_AUTHORIZATION});
     if(priorUrl===undefined) delete process.env.OBSIDIAN_MCP_URL; else process.env.OBSIDIAN_MCP_URL=priorUrl;
     if(priorAuth===undefined) delete process.env.OBSIDIAN_MCP_AUTHORIZATION; else process.env.OBSIDIAN_MCP_AUTHORIZATION=priorAuth;
   });
@@ -136,4 +142,19 @@ test("unavailable Obsidian MCP returns a useful status without exposing credenti
   const text=await response.text();
   assert.match(text,/Open Obsidian/);
   assert.ok(!text.includes('test-private-credential'));
+});
+
+
+test('agent settings are server-owned, shared and protected from foreign origins',async t=>{
+ const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));t.after(()=>{server.closeAllConnections();server.close();});
+ const origin=`http://127.0.0.1:${server.address().port}`;
+ const post=(route,body,headers={})=>fetch(origin+route,{method:'POST',headers:{'content-type':'application/json',...headers},body:JSON.stringify(body)});
+ const initial=await(await post('/api/agent/settings',{})).json();
+ assert.equal(initial.settings.repository,true);assert.equal(initial.settings.terminal,'ask');
+ const updated=await(await post('/api/agent/settings/save',{settings:{...initial.settings,repository:false,terminal:'off'},revision:initial.revision})).json();
+ assert.equal((await(await post('/api/agent/settings',{})).json()).settings.repository,false);
+ assert.equal((await post('/api/agent/settings/save',{settings:initial.settings,revision:initial.revision})).status,409);
+ assert.equal((await post('/api/agent/settings',{}, {origin:'http://127.0.0.1:1'})).status,403);
+ assert.equal((await post('/api/agent/approval',{id:'invented',approved:true})).status,400);
+ assert.equal((await post('/api/agent/settings/save',{settings:initial.settings,revision:updated.revision})).status,200);
 });

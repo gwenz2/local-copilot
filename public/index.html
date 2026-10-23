@@ -954,6 +954,7 @@
     <script src="folder-browser.js" defer></script>
     <link rel="stylesheet" href="workbench.css" />
     <script src="provider-settings.js" defer></script>
+    <script src="agent-settings.js" defer></script>
     <script src="workbench.js" defer></script>
     <script src="chat-scroll.js" defer></script>
     <script src="openui-chat.js" defer></script>
@@ -1074,7 +1075,7 @@
               <p id="activityStatus" class="view-notice" role="status">Send a message to begin.</p>
               <ol id="activityEvents" class="activity-events"></ol>
               <pre id="liveResponse" class="live-response" hidden></pre>
-              <p class="activity-footnote">Shows request and tool events. No terminal commands run here.</p>
+              <p class="activity-footnote">The last 20 requests per project are saved on this laptop. Command details and output are session-only.</p>
             </section>
             <div class="editor-body" id="editorBody">
               <div class="empty-editor">
@@ -1231,6 +1232,8 @@
           <button type="button" data-settings-tab="workspace" onclick="Codebench.settingsTab('workspace')">Workspace</button>
           <button type="button" data-settings-tab="editor" onclick="Codebench.settingsTab('editor')">Editor &amp; review</button>
           <button type="button" data-settings-tab="ai" onclick="Codebench.settingsTab('ai')">AI &amp; context</button>
+          <button type="button" data-settings-tab="connections" onclick="Codebench.settingsTab('connections')">Connections</button>
+          <button type="button" data-settings-tab="agent" onclick="Codebench.settingsTab('agent')">Agent &amp; tools</button>
           <button type="button" data-settings-tab="feedback" onclick="Codebench.settingsTab('feedback')">Feedback</button>
         </nav><div class="settings-content">
           <section data-settings-panel="workspace" hidden><h3>Workspace</h3><p class="settings-help">Adjust panel sizes. Drag their dividers for quick changes.</p><label for="sidebarWidthInput">Explorer width (px)</label><input type="number" id="sidebarWidthInput" min="160" max="600" /><label for="chatWidthInput">Assistant width (px)</label><input type="number" id="chatWidthInput" min="220" max="1000" /><p class="settings-help">Ctrl+B: Explorer · Ctrl+Alt+B: Assistant · Ctrl+Shift+F: focus mode. The fullscreen button hides the browser chrome.</p><button class="btn-sm" onclick="Codebench.resetLayoutDraft()">Reset panel sizes</button></section>
@@ -1242,7 +1245,7 @@
           <option value="deepseek">DeepSeek</option><option value="openai">OpenAI</option><option value="anthropic">Claude (Anthropic)</option><option value="gemini">Gemini (Google)</option><option value="openui">OpenUI Gateway</option><option value="custom">Custom / OpenAI-compatible</option>
         </select></div>
         <p id="providerHelp" class="settings-help"></p>
-        <div><label for="apiKeyInput" id="apiKeyLabel">API key</label><input type="password" id="apiKeyInput" placeholder="Provider API key" autocomplete="off" aria-describedby="credentialStatus" /><p id="credentialStatus" class="settings-help" role="status" aria-live="polite"></p></div>
+        <div><label for="apiKeyInput" id="apiKeyLabel">API key</label><input type="password" id="apiKeyInput" placeholder="Provider API key" autocomplete="off" aria-describedby="credentialStatus" /><p id="credentialStatus" class="settings-help" role="status" aria-live="polite"></p><button class="btn-sm" id="manageOpenuiConnection" type="button" onclick="Codebench.settingsTab('connections')">Manage OpenUI connection</button></div>
         <div id="customEndpointField" hidden><label for="apiBaseUrl">API base URL</label><input type="text" id="apiBaseUrl" placeholder="https://example.com/v1" /></div>
         <div><label for="modelSelect">Model</label><div class="settings-row"><select id="modelSelect" onchange="selectModel()" aria-describedby="modelCostHelp"></select><button class="btn-sm" id="loadModelsBtn" onclick="loadProviderModels()">Refresh models</button></div></div>
         <p id="modelCostHelp" class="settings-help"></p>
@@ -1263,6 +1266,45 @@
         </details>
         <p class="settings-help">Chat and attached files go to the selected service. Saved credentials stay in server-side files on this laptop.</p>
         <div id="deepseekBalanceField"><label>DeepSeek Balance</label><div class="settings-row"><button class="btn-sm" onclick="checkBalance()">Check Balance</button><span id="balanceResult" class="settings-help"></span></div></div>
+          </section>
+          <section data-settings-panel="connections" hidden><h3>Connections</h3>
+            <p class="settings-help">Shared by web and desktop on this laptop. Changes apply to new requests. Saved credentials stay in private server-side files, not browser storage.</p>
+            <fieldset id="connectionFields" disabled style="border:0;padding:0;margin:0">
+              <h4>OpenUI Gateway</h4>
+              <label for="openuiConnectionKey">Replace API key</label><input type="password" id="openuiConnectionKey" autocomplete="off" placeholder="Leave blank to keep the saved key" />
+              <p id="openuiConnectionState" class="settings-help"></p>
+              <label class="memory-option"><input type="checkbox" id="removeOpenuiConnectionKey" /> Remove saved OpenUI key</label>
+              <button class="btn-sm" type="button" onclick="testOpenuiConnection()">Save and test OpenUI</button>
+              <h4>Obsidian MCP</h4>
+              <label for="obsidianConnectionUrl">Local server address</label><input type="url" id="obsidianConnectionUrl" placeholder="http://127.0.0.1:PORT/mcp" />
+              <label for="obsidianConnectionAuthorization">Replace authorization header</label><input type="password" id="obsidianConnectionAuthorization" autocomplete="off" placeholder="Leave blank to keep saved authorization" />
+              <p id="obsidianConnectionState" class="settings-help"></p>
+              <label class="memory-option"><input type="checkbox" id="removeObsidianConnectionAuthorization" /> Remove saved authorization</label>
+              <p class="settings-help">Use the full authorization value supplied by your MCP server, including Bearer if required. Obsidian must be open. AI access remains controlled per provider in AI &amp; context.</p>
+              <h4>Project mappings</h4><p class="settings-help">Map a local project folder to its existing vault project. Shared guides stay read only.</p>
+              <div id="connectionProjectMappings"></div><button class="btn-sm" type="button" onclick="addConnectionMapping()">Add project mapping</button><button class="btn-sm" type="button" onclick="createCurrentObsidianProject()">Create current project in Obsidian</button>
+              <div class="settings-row" style="margin-top:16px"><button class="btn-sm" type="button" onclick="saveConnectionsFromButton()">Save connections</button><button class="btn-sm" type="button" onclick="testMappedObsidianConnection()">Save and test Obsidian</button></div>
+            </fieldset>
+            <p id="connectionsStatus" class="settings-help" role="status" aria-live="polite"></p>
+          </section>
+          <section data-settings-panel="agent" hidden><h3>Agent &amp; tools</h3>
+          <p class="settings-help">Tools are available to the selected model only when enabled. File edits remain proposals for review. Stop ends the current request.</p>
+          <label class="memory-option"><input type="checkbox" id="agent-repository" /> Explore the selected repository</label>
+          <p class="settings-help">Search and read project text. Hidden files, credentials, generated folders, links and Obsidian vaults are excluded.</p>
+          <label class="memory-option"><input type="checkbox" id="agent-webSearch" /> Web search</label>
+          <label class="memory-option"><input type="checkbox" id="agent-webFetch" /> Read public webpages</label>
+          <p class="settings-help">Search when requested or current information/references are needed. No search API key required; the public service can rate limit requests. Source links appear in responses.</p>
+          <label class="memory-option"><input type="checkbox" id="agent-browser" /> Isolated browser inspection</label>
+          <p class="settings-help">Read a public page, collect console errors and capture a screenshot in a separate temporary profile. No existing logins, downloads, private-network sites or cross-site resources.</p>
+          <label for="agent-terminal">Terminal access</label><select id="agent-terminal"><option value="off">Off</option><option value="ask">Ask before every command</option><option value="approved">Automatically approve listed commands</option><option value="all">Automatically approve all commands</option></select>
+          <p class="settings-help">Ask mode requests approval each time. Listed mode still asks for critical or unrecognized commands. All commands mode skips every command approval, including critical commands. Commands use your Windows account permissions and can change or delete files.</p>
+          <div id="agent-commandList"><label for="agent-approvedCommands">Exact commands to approve automatically</label><textarea id="agent-approvedCommands" rows="3" placeholder="npm test&#10;npm run lint"></textarea>
+          <p class="settings-help">One command per line. Only recognized test/build/check and read-only Git commands can skip approval. Project scripts can still change files.</p></div>
+          <label for="agent-testCommand">Project test command</label><input id="agent-testCommand" placeholder="npm test" />
+          <p class="settings-help">Shared default command. The AI can request a different command using your selected terminal permission mode. Failed checks produce proposed fixes; apply them before asking for another test run.</p>
+          <label for="agent-maxRounds">Maximum model rounds per request</label><input type="number" id="agent-maxRounds" min="2" max="10" />
+          <p class="settings-help">At most 12 tool calls per request. More rounds use more model tokens.</p>
+          <p id="agentSettingsStatus" class="settings-help" role="status" aria-live="polite"></p><button type="button" class="btn-sm" onclick="AgentSettings.load()">Reload tool settings</button>
           </section>
           <section data-settings-panel="feedback" hidden><h3>Feedback</h3><label for="soundModeInput">Feedback sounds</label><select id="soundModeInput"><option value="all">Completion and errors</option><option value="error">Errors only</option><option value="off">Off</option></select><label for="soundVolumeInput">Volume</label><input type="range" id="soundVolumeInput" min="0" max="100" /><button class="btn-sm" onclick="Codebench.previewSound()">Preview sound</button><label class="memory-option"><input type="checkbox" id="reducedMotionInput" /> Reduce motion</label><p class="settings-help">No startup or per-character sounds. Your system’s reduced-motion preference is also respected. The rail’s volume button mutes feedback immediately.</p></section>
         </div></div>
@@ -1293,7 +1335,7 @@
       try { recoveredDrafts = JSON.parse(LaptopStore.getItem('editorDrafts') || '{}'); } catch {}
       const state = {
         apiKey: LaptopStore.getItem("dsApiKey") || "",
-        backendUrl: LaptopStore.getItem("backendUrl") || window.location.origin,
+        backendUrl: window.__CODEBENCH_LOCAL_STATE__.desktop ? window.location.origin : LaptopStore.getItem("backendUrl") || window.location.origin,
         rootDir: LaptopStore.getItem("rootDir") || "",
         openTabs: recoveredDrafts.rootDir === LaptopStore.getItem('rootDir') && Array.isArray(recoveredDrafts.tabs) ? recoveredDrafts.tabs.filter(tab => tab && typeof tab.path === 'string' && typeof tab.content === 'string') : [],
         activeTab: recoveredDrafts.rootDir === LaptopStore.getItem('rootDir') ? recoveredDrafts.activeTab : null,

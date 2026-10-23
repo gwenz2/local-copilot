@@ -31,11 +31,11 @@ function projectFolder(rootDir, env) {
   return folder;
 }
 
-function allowedNote(note, folder = '') {
+function allowedNote(note, folder = '', allReadable = false) {
   if (typeof note !== 'string' || note.length > 300 || !note.endsWith('.md') || /[\\:%?#\x00-\x1f]/.test(note)) return false;
   if (note.split('/').some(part => !part || part.startsWith('.'))) return false;
   if (EXCLUDED.test(note)) return false;
-  return GLOBAL_NOTES.includes(note) || Boolean(folder && note.startsWith(folder + '/'));
+  return allReadable || GLOBAL_NOTES.includes(note) || Boolean(folder && note.startsWith(folder + '/'));
 }
 
 function configured(env = process.env) {
@@ -79,16 +79,17 @@ async function createObsidianSession({ rootDir, mode='read-only', env = process.
   const changes=[];
   let remaining = 24000;
   let searches = 0;
-  const inScope = {or:[...GLOBAL_NOTES.map(note => ({'==':[{var:'path'},note]})), ...(folder ? [{glob:[folder + '/**/*.md',{var:'path'}]}] : [])]};
+  // All classified notes are readable; write tools remain mapped-project only.
+  const inScope = {or:[...GLOBAL_NOTES.map(note => ({'==':[{var:'path'},note]})), {'glob':['**/*.md',{var:'path'}]}]};
   const accessible = {in:[{var:'frontmatter.ai_access'},['public','internal']]};
   const excluded = {regexp:[EXCLUDED.source.replace(/[a-z]/gi,char=>`[${char.toLowerCase()}${char.toUpperCase()}]`),{var:'path'}]};
   async function query(condition) {
     const result = decode(await client.callTool({name:'search_query',arguments:{query:{if:[{and:[inScope,{'!':excluded},accessible,condition]},{var:'path'},false]}}}, undefined, {timeout:10000}));
     if (!Array.isArray(result)) throw new Error('Invalid Obsidian search result');
-    return result.map(item => item.filename).filter(note => allowedNote(note, folder));
+    return result.map(item => item.filename).filter(note => allowedNote(note, folder, true));
   }
   async function read(note) {
-    if (!allowedNote(note, folder)) throw new Error('Note outside permitted scope');
+    if (!allowedNote(note, folder, true)) throw new Error('Note outside permitted scope');
     if (sources.has(note)) return sources.get(note);
     if (remaining <= 0) throw new Error('Memory context limit reached');
     if (!(await query({'==':[{var:'path'},note]})).includes(note)) throw new Error('Note restricted, unclassified or missing');
@@ -166,4 +167,23 @@ async function createObsidianSession({ rootDir, mode='read-only', env = process.
   };
 }
 
-module.exports = {createObsidianSession, configured, allowedNote, allowedWrite, projectFolder,memoryMode};
+async function createObsidianProject({rootDir, projectName, env = process.env, connect = connectMcp} = {}) {
+  if (!configured(env)) throw new Error('Obsidian MCP is not configured');
+  if (typeof rootDir !== 'string' || !path.isAbsolute(rootDir)) throw new Error('Project root must be absolute');
+  if (typeof projectName !== 'string' || !/^[^/\\:.%\x00-\x1f]{1,80}$/.test(projectName.trim())) throw new Error('Invalid project name');
+  const name = projectName.trim(), folder = `02 - Projects/Active/${name}`;
+  const client = await connect(env, 'read-write');
+  try {
+    const date = new Date().toISOString().slice(0,10);
+    const files = {
+      [`${folder}/${name}.md`]: `---\nai_access: internal\nai_generated: true\nreview_status: draft\ncreated: ${date}\nupdated: ${date}\n---\n\n# ${name}\n\nProject overview created by Draftdrion.\n`,
+      [`${folder}/PROJECT-CONTEXT.md`]: `---\nai_access: internal\nai_generated: true\nreview_status: draft\ncreated: ${date}\nupdated: ${date}\n---\n\n# Project context\n\n- Local project root: ${rootDir}\n`,
+      [`${folder}/memory.md`]: `---\nai_access: internal\nai_generated: true\nreview_status: draft\ncreated: ${date}\nupdated: ${date}\n---\n\n# Project memory\n`,
+      [`${folder}/handoff.md`]: `---\nai_access: internal\nai_generated: true\nreview_status: draft\ncreated: ${date}\nupdated: ${date}\n---\n\n# Handoff\n\nProject created by Draftdrion.\n`,
+    };
+    for (const [file, content] of Object.entries(files)) await client.callTool({name:'vault_write',arguments:{path:file,content}}, undefined, {timeout:10000});
+    return {folder, files:Object.keys(files)};
+  } finally { await client.close().catch(() => {}); }
+}
+
+module.exports = {createObsidianSession, createObsidianProject, configured, allowedNote, allowedWrite, projectFolder,memoryMode};

@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 
-const SIMPLE_KEYS = new Set(['aiProvider','aiProfiles','backendUrl','rootDir','contextFiles','chatHistory','histMode','histRange','workbenchLayout','codebenchPreferences','editorDrafts','undoHistory','explorerState']);
+const SIMPLE_KEYS = new Set(['aiProvider','aiProfiles','backendUrl','rootDir','contextFiles','chatHistory','histMode','histRange','workbenchLayout','codebenchPreferences','editorDrafts','undoHistory','explorerState','activityHistory']);
 function allowedKey(key) { return SIMPLE_KEYS.has(key) || (typeof key === 'string' && key.startsWith('projectSession:') && key.length < 1000); }
 function createLocalState(directory = process.env.CODEBENCH_DATA_DIR || path.join(process.env.LOCALAPPDATA || path.join(os.homedir(),'.local','share'),'GwensCodebench')) {
   fs.mkdirSync(directory,{recursive:true,mode:0o700});
@@ -24,7 +24,7 @@ function createLocalState(directory = process.env.CODEBENCH_DATA_DIR || path.joi
     const current=load(file,{});
     for(const [key,value] of Object.entries(changes)) {
       if(!allowedKey(key)||typeof value!=='string'||Buffer.byteLength(value)>50*1024*1024)throw new Error('Invalid local settings entry');
-      if(['aiProfiles','contextFiles','chatHistory','workbenchLayout','codebenchPreferences','editorDrafts','undoHistory','explorerState'].includes(key)||key.startsWith('projectSession:')){
+      if(['aiProfiles','contextFiles','chatHistory','workbenchLayout','codebenchPreferences','editorDrafts','undoHistory','explorerState','activityHistory'].includes(key)||key.startsWith('projectSession:')){
         const parsed=JSON.parse(value),array=['contextFiles','chatHistory'].includes(key);
         if(!parsed||typeof parsed!=='object'||Array.isArray(parsed)!==array)throw new Error('Invalid local settings data');
       }
@@ -43,6 +43,6 @@ function createLocalState(directory = process.env.CODEBENCH_DATA_DIR || path.joi
   const auditFile=path.join(directory,'obsidian-changes.json');
   function memoryChanges(){return (load(auditFile,{changes:[]}).changes||[]).slice(-100);}
   function recordMemoryChange(change){atomicWrite(auditFile,{changes:[...memoryChanges(),change].slice(-100)});}
-  return {snapshot:()=>({...load(file,{})}),patch,saveCredential,credentials:()=>({...credentials}),directory,memoryChanges,recordMemoryChange};
+  return {snapshot:()=>({...load(file,{})}),patch,saveCredential,credentials:()=>({...load(credentialFile,{})}),directory,memoryChanges,recordMemoryChange};
 }
 module.exports={createLocalState,allowedKey};

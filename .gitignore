@@ -3,6 +3,7 @@ node_modules/
 .env.*
 *.log
 npm-debug.log*
+dist/
 
 # OS
 .DS_Store
@@ -12,3 +13,9 @@ Thumbs.db
 .vscode/
 .idea/
 .apikey
+
+# Private laptop configuration (normally outside the repository)
+connections.json
+credentials.json
+desktop.env
+agent-policy.json

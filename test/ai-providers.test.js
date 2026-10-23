@@ -141,7 +141,7 @@ test('memory is absent unless supplied and invalid tool arguments never reach MC
   assert.equal(calls[0].body.messages[0].content,input.system);
   let attempts=0;
   const loop=createProviderClient({post:async()=>({data:++attempts===1 ? {choices:[{message:{tool_calls:[{id:'bad',function:{name:'vault_delete',arguments:'invalid json'}}]}}]} : textResult})});
-  await loop.chat({...input,provider:'openui',memory:{bootstrap:async()=>'',tools:[],call:async()=>{throw new Error('must not call');}}});
+  await loop.chat({...input,provider:'openui',memory:{bootstrap:async()=>'',tools:[{type:'function',function:{name:'obsidian_read'}}],call:async()=>{throw new Error('must not call');}}});
   assert.equal(attempts,2);
 });
 
@@ -173,7 +173,7 @@ test('truncated tool calls never execute note writes',async()=>{
 test('repeated tool requests stop at the request budget', async () => {
   let attempts=0;
   const client=createProviderClient({post:async()=>{attempts++;return {data:{choices:[{message:{tool_calls:[{id:'repeat',function:{name:'obsidian_search',arguments:'{"query":"example"}'}}]}}]}};}});
-  await assert.rejects(client.chat({...input,provider:'openui',memory:{bootstrap:async()=>'',tools:[],call:async()=>({paths:[]})}}),/tool limit/);
+  await assert.rejects(client.chat({...input,provider:'openui',memory:{bootstrap:async()=>'',tools:[{type:'function',function:{name:'obsidian_search'}}],call:async()=>({paths:[]})}}),/tool limit/);
   assert.equal(attempts,5);
 });
 
@@ -197,4 +197,15 @@ test('panel widths reserve editor space when both panels are expanded', () => {
     assert.ok(widths.left+widths.right+10+280<=total);
   }
   assert.deepEqual(panelWidths(1280,260,420,false,false),{left:0,right:0});
+});
+
+
+test('repository and memory tools share one bounded compatible loop with activity events',async()=>{
+ const requests=[],events=[],executed=[];
+ const client=createProviderClient({post:async(_url,body)=>{requests.push(structuredClone(body));return {data:requests.length===1?{choices:[{message:{tool_calls:[{id:'r',function:{name:'repository_read',arguments:'{"path":"a.js"}'}},{id:'m',function:{name:'obsidian_read',arguments:'{"path":"me.md"}'}}]},finish_reason:'tool_calls'}],usage:{total_tokens:3}}:textResult};}});
+ const schema=name=>({type:'function',function:{name,parameters:{type:'object'}}});
+ const agent={tools:[schema('repository_read')],execute:async(name,args)=>{executed.push(name);return {content:'repo'};},maxRounds:3};
+ const memory={bootstrap:async()=>'',tools:[schema('obsidian_read')],call:async(name)=>{executed.push(name);return {content:'memory'};}};
+ const result=await client.chat({...input,provider:'openai',agent,memory,onProgress:event=>events.push(event)});
+ assert.equal(result.message.content,'answer');assert.deepEqual(executed,['repository_read','obsidian_read']);assert.equal(requests[0].tools.length,2);assert.equal(events.filter(event=>event.type==='tool-result').length,2);
 });

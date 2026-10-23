@@ -14,7 +14,18 @@
     }
     return [...files.values()];
   }
-  if (typeof module !== 'undefined') module.exports = {proposals};
+  function activitySnapshot(history) {
+    const projects={};
+    for(const [root,runs] of Object.entries(history?.projects || {})) {
+      if(!Array.isArray(runs))continue;
+      projects[root]=runs.slice(-20).map(item=>({id:item.id,prompt:item.prompt,provider:item.provider,started:item.started,finished:item.finished || null,status:item.finished?item.status:'Interrupted; the app reloaded.',events:(item.events || []).slice(-100).map(event=>({id:event.id,type:event.type,time:event.time,text:event.text,approvalId:event.approvalId,approved:event.approved}))}));
+    }
+    return {projects};
+  }
+  function screenshotArtifactPath(value) {
+    return typeof value==='string' && /^\/api\/agent\/browser-artifact\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value)?value:'';
+  }
+  if (typeof module !== 'undefined') module.exports = {proposals,activitySnapshot,screenshotArtifactPath};
   if (typeof document === 'undefined') return;
 
   let saved = {};
@@ -23,6 +34,17 @@
   let view = 'code', run, lastPrompt = '', review, reviewGeneration = 0, audio;
   const snapshots = new Map();
   const $ = id => document.getElementById(id);
+  let activityHistory;
+  try { activityHistory=activitySnapshot(JSON.parse(LaptopStore.getItem('activityHistory') || '{}')); } catch { activityHistory={projects:{}}; }
+  let activityRoot='',activityDirty=true;
+  const expandedRuns=new Set(),expandedEvents=new Set();
+  const activityKey=()=>String(state.rootDir || '(no project)').replace(/\\/g,'/').toLowerCase();
+  function saveActivity() { LaptopStore.setItem('activityHistory',JSON.stringify(activitySnapshot(activityHistory))); }
+  function syncActivityProject() {
+    const root=activityKey();
+    if(activityRoot===root)return;
+    activityRoot=root;run=null;activityDirty=true;renderActivity();
+  }
   const persist = () => { LaptopStore.setItem('codebenchPreferences',JSON.stringify(prefs)); applyPreferences(); };
   function applyPreferences() {
     document.documentElement.dataset.reducedMotion = String(prefs.reducedMotion);
@@ -47,6 +69,7 @@
     if (next === 'activity') renderActivity();
   }
   function settingsTab(name = 'ai') {
+    document.querySelector('.settings-content').scrollTop=0;
     for (const panel of document.querySelectorAll('[data-settings-panel]')) panel.hidden = panel.dataset.settingsPanel !== name;
     for (const button of document.querySelectorAll('[data-settings-tab]')) button.setAttribute('aria-current',String(button.dataset.settingsTab === name));
   }
@@ -98,6 +121,7 @@
     return -1;
   }
   function refreshReviewCount() {
+    syncActivityProject();
     const index=latestReview(); const count=index<0?0:proposals([state.messages[index]],parseApplyJson).filter(file=>!state.messages[index].appliedFiles?.includes(file.filePath)).length;
     $('reviewCount').textContent=count; $('railReviewCount').textContent=count; $('railReviewCount').hidden=!count;
     $('projectName').textContent=state.rootDir ? state.rootDir.replace(/\\/g,'/').split('/').filter(Boolean).pop() : 'No project';
@@ -192,34 +216,93 @@
   }
   function resetReview() {reviewGeneration++;review=null;snapshots.clear();showView('code');refreshReviewCount();}
 
+  function addActivity(event) {
+    const text=String(event.text || event.name || event.type).slice(0,1000);
+    if(event.type==='status' && run.events.at(-1)?.text===text)return;
+    run.events.push({id:crypto.randomUUID(),type:event.type,time:new Date().toISOString(),text,
+      output:event.output===undefined?undefined:(typeof event.output==='string'?event.output:JSON.stringify(event.output)).slice(0,20000),
+      screenshotUrl:screenshotArtifactPath(event.screenshotUrl),duration:event.duration,
+      approvalId:event.id,command:event.command,cwd:event.cwd,reason:event.reason,critical:Boolean(event.critical),approved:event.approved});
+    run.events=run.events.slice(-100);activityDirty=true;saveActivity();
+  }
   function progress(event) {
-    if(!run)return;
+    if(!run || run.finished || run.controller.signal.aborted)return;
     if(event.type==='memory-change'){
       run.noteOperations=true;
       run.status=`Obsidian ${event.change.status} · ${event.change.path}`;
-      run.events.push({text:run.status,time:new Date().toLocaleTimeString()});
+      addActivity({type:event.type,text:run.status});
       if(event.change.status!=='requested'){state.messages.push({role:'assistant',content:run.status,memory:{status:'connected',sources:[],changes:[event.change]}});saveState();renderMessages();}
     }
     if(event.type==='delta') {run.raw+=event.text;run.status='Receiving response · '+run.raw.length.toLocaleString()+' characters';}
     else if(event.type==='reset'){run.raw='';}
-    else if(event.type==='status') {run.status=event.text;if(run.events.at(-1)?.text!==event.text)run.events.push({text:event.text,time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})});}
-    if(!run.pending){run.pending=true;requestAnimationFrame(()=>{run.pending=false;renderActivity();});}
+    else if(event.type==='status') {run.status=event.text;addActivity(event);}
+    else if(event.type==='approval') {
+      run.status=event.critical?'Critical command needs your approval':'Command needs your approval';
+      addActivity({...event,text:run.status});expandedRuns.add(run.id);showView('activity');
+    } else if(event.type==='approval-result') {
+      const pending=run.events.find(item=>item.approvalId===event.id && item.type==='approval');
+      if(pending)pending.approved=event.approved;
+      run.status=event.text || (event.approved?'Command approved':'Command denied');addActivity({...event,text:run.status});
+    } else if(event.type.startsWith('tool-')) {
+      run.status=event.text || `${event.name || 'Tool'} · ${event.type.replace('tool-','')}`;addActivity({...event,text:run.status});
+    }
+    if(!run.pending){const current=run;current.pending=true;requestAnimationFrame(()=>{current.pending=false;renderActivity();});}
+  }
+  async function approveCommand(event,approved,host,current) {
+    if(!current || current.finished || current!==run || current.controller.signal.aborted)return;
+    host.querySelectorAll('button').forEach(button=>button.disabled=true);
+    try {
+      await api('/api/agent/approval',{id:event.approvalId,approved});
+      event.approved=approved;activityDirty=true;saveActivity();renderActivity();
+    } catch(error) {if(current===run && !current.finished && !current.controller.signal.aborted){notify(error.message,true);host.querySelectorAll('button').forEach(button=>button.disabled=false);}}
   }
   function renderActivity() {
-    if(!run)return;
-    for(const id of ['activityStatus','mainRunState','chatRunState'])$(id).textContent=run.status;
-    const list=$('activityEvents');list.replaceChildren();for(const event of run.events){const li=document.createElement('li');const time=document.createElement('time');time.textContent=event.time;li.append(time,document.createTextNode(event.text));list.appendChild(li);}
-    const text=run.raw.slice(-20000);$('liveResponse').hidden=!text||run.provider==='openui';$('liveResponse').textContent=text;
+    const runs=activityHistory.projects[activityKey()] || [],latest=run || runs.at(-1);
+    for(const id of ['activityStatus','mainRunState','chatRunState'])$(id).textContent=latest?.status || 'Send a message to begin.';
+    if(activityDirty){
+      const list=$('activityEvents');list.replaceChildren();
+      for(const current of [...runs].reverse()) {
+        const row=document.createElement('li'),group=document.createElement('details'),summary=document.createElement('summary');
+        row.className='activity-run';group.open=expandedRuns.has(current.id);group.ontoggle=()=>{if(group.open)expandedRuns.add(current.id);else expandedRuns.delete(current.id);};
+        const started=document.createElement('time');started.dateTime=current.started;started.textContent=new Date(current.started).toLocaleString();
+        const title=document.createElement('span');title.textContent=current.prompt || 'AI request';
+        const status=document.createElement('span');status.className='activity-run-status';status.textContent=current.status;
+        summary.append(started,title,status);group.appendChild(summary);
+        const events=document.createElement('ol');events.className='activity-steps';
+        for(const event of current.events){
+          const li=document.createElement('li'),time=document.createElement('time'),body=document.createElement('div');
+          time.dateTime=event.time;time.textContent=new Date(event.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+          const label=document.createElement('span');label.textContent=event.text+(Number.isFinite(event.duration)?' · '+(event.duration/1000).toFixed(1)+'s':'');body.appendChild(label);
+          if(event.output){const details=document.createElement('details'),heading=document.createElement('summary'),output=document.createElement('pre');heading.textContent='View output';output.textContent=event.output;details.open=expandedEvents.has(event.id);details.ontoggle=()=>{if(details.open)expandedEvents.add(event.id);else expandedEvents.delete(event.id);};details.append(heading,output);body.appendChild(details);}
+          const screenshot=screenshotArtifactPath(event.screenshotUrl);
+          if(screenshot){const details=document.createElement('details'),heading=document.createElement('summary'),image=document.createElement('img');heading.textContent='Browser screenshot';image.src=screenshot;image.alt='Screenshot captured by isolated browser inspection';image.loading='lazy';image.style.maxWidth='100%';details.append(heading,image);body.appendChild(details);}
+          if(event.type==='approval') {
+            if(event.command){const command=document.createElement('pre');command.textContent=event.command;body.appendChild(command);}
+            if(event.cwd || event.reason){const description=document.createElement('p');description.textContent=[event.cwd,event.reason].filter(Boolean).join(' · ');body.appendChild(description);}
+            const pending=current===run && !current.finished && !current.controller.signal.aborted && event.approved===undefined;
+            if(pending){const actions=document.createElement('div');actions.className='activity-approval';for(const [approved,text]of [[true,event.critical?'Approve critical command once':'Approve once'],[false,'Deny']]){const button=document.createElement('button');button.className='btn-sm';button.textContent=text;button.onclick=()=>approveCommand(event,approved,actions,current);actions.appendChild(button);}body.appendChild(actions);}
+            else {const outcome=document.createElement('p');outcome.textContent=event.approved===undefined?'Approval expired':event.approved?'Approved':'Denied';body.appendChild(outcome);}
+          }
+          li.append(time,body);events.appendChild(li);
+        }
+        group.appendChild(events);row.appendChild(group);list.appendChild(row);
+      }
+      activityDirty=false;
+    }
+    const text=run?.raw.slice(-20000) || '';$('liveResponse').hidden=!text || run?.provider==='openui';$('liveResponse').textContent=text;
     const typing=document.querySelector('.typing-msg .msg-body');
-    if(typing){let live=typing.querySelector('.live-chat-preview');if(!live){live=document.createElement('pre');live.className='live-chat-preview';typing.appendChild(live);}live.textContent=run.provider==='openui'?'Generating the response…':text;}
+    if(typing && run){let live=typing.querySelector('.live-chat-preview');if(!live){live=document.createElement('pre');live.className='live-chat-preview';typing.appendChild(live);}live.textContent=run.provider==='openui'?'Generating the response…':text;}
   }
   function startRun(prompt,config) {
-    lastPrompt=prompt;run={raw:'',events:[],provider:config.provider,status:'Preparing context',controller:new AbortController(),noteOperations:false};initAudio();
+    syncActivityProject();lastPrompt=prompt;
+    run={id:crypto.randomUUID(),prompt:prompt.slice(0,160),started:new Date().toISOString(),raw:'',events:[],provider:config.provider,status:'Preparing context',controller:new AbortController(),noteOperations:false};
+    const runs=activityHistory.projects[activityRoot] ||= [];runs.push(run);activityHistory.projects[activityRoot]=runs.slice(-20);expandedRuns.add(run.id);activityDirty=true;initAudio();
     document.querySelector('.app').classList.add('ai-running');$('chatProcess').hidden=false;$('retryBtn').hidden=true;
     document.querySelectorAll('.stop-run').forEach(button=>button.hidden=false);updateApplyButton();progress({type:'status',text:'Preparing attached context'});return run.controller.signal;
   }
   function finishRun(error,stopped=false) {
-    progress({type:'status',text:(error||stopped)&&run?.noteOperations?'Check Recent note changes before retrying; a note operation may have completed.':stopped?'Stopped. Incomplete edits cannot be applied.':error?'Request failed. You can retry.':'Response complete'});
+    if(run && !run.finished){run.status=(error||stopped)&&run.noteOperations?'Check Recent note changes before retrying; a note operation may have completed.':stopped?'Stopped. Incomplete edits cannot be applied.':error?'Request failed. You can retry.':'Response complete';addActivity({type:'status',text:run.status});}
+    if(run){run.finished=new Date().toISOString();activityDirty=true;saveActivity();renderActivity();}
     document.querySelector('.app').classList.remove('ai-running');$('chatProcess').hidden=true;$('retryBtn').hidden=!error&&!stopped;
     document.querySelectorAll('.stop-run').forEach(button=>button.hidden=true);refreshReviewCount();updateApplyButton();if(!stopped)sound(error?'error':'complete');
   }
@@ -228,7 +311,7 @@
     isApplying:()=>Boolean(review?.busy),
     async reloadOriginal(){if(!review||review.busy)return;for(const file of review.files)snapshots.delete(snapshotKey(file));if(review.active)await selectFile(review.active);},
     setDiffLayout(value){prefs.diffLayout=value==='split'?'split':'inline';persist();if(review)renderReview();},
-    toggleFocus,toggleFullscreen,stopRun(){run?.controller.abort();},retry,
+    toggleFocus,toggleFullscreen,stopRun(){if(run && !run.finished && !run.controller.signal.aborted){progress({type:'status',text:'Stopping request…'});run.controller.abort();activityDirty=true;renderActivity();}},retry,
     toggleMute(){prefs.muted=!prefs.muted;persist();},previewSound(){sound('error',true);},
     resetLayoutDraft(){$('sidebarWidthInput').value=240;$('chatWidthInput').value=380;},
   };
